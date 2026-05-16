@@ -1,0 +1,71 @@
+== layout rules now ==
+148:tagrule=id:1,layout_name:monocle
+149:tagrule=id:2,layout_name:monocle
+150:tagrule=id:3,layout_name:monocle
+151:tagrule=id:4,layout_name:monocle
+152:tagrule=id:5,layout_name:monocle
+153:tagrule=id:6,layout_name:monocle
+154:tagrule=id:7,layout_name:monocle
+155:tagrule=id:8,layout_name:monocle
+156:tagrule=id:9,layout_name:monocle
+== relevant options ==
+81:overviewgappi=5
+82:overviewgappo=30
+91:no_border_when_single=1
+95:sloppyfocus=0
+96:warpcursor=0
+128:gappih=0
+129:gappiv=0
+130:gappoh=0
+131:gappov=0
+134:borderpx=2
+== emergency binds ==
+291:# DMS KDE Workstation emergency Mango layout binds
+292-bind=SUPER,Return,togglemaximizescreen,
+293-bind=SUPER,space,togglefloating,
+294-bind=SUPER,f,togglefullscreen,
+295-bind=SUPER,t,switch_layout,tile
+296-bind=SUPER,c,switch_layout,scroller
+297-bind=SUPER,d,switch_layout,dwindle
+298-bind=SUPER,apostrophe,switch_layout,monocle
+== reload ==
+mmsg - MangoWM IPC
+
+SYNOPSIS:
+	mmsg [-OTLq]
+	mmsg [-o <output>] -s [-t <tags>] [-l <layout>] [-c <tags>] [-d <cmd>,<arg1>,<arg2>,<arg3>,<arg4>,<arg5>]
+	mmsg [-o <output>] (-g | -w) [-OotlcvmfxekbA]
+
+OPERATION MODES:
+	-g           Get values (tags, layout, focused client)
+	-s           Set values (switch tags, layouts)
+	-w           Watch mode (stream events)
+
+GENERAL OPTIONS:
+	-O           Get all output (monitor) information
+	-T           Get number of tags
+	-L           Get all available layouts
+	-q           Quit mango
+	-o <output>  Select output (monitor)
+
+GET OPTIONS (used with -g or -w):
+	-O           Get output name
+	-o           Get output (monitor) focus information
+	-t           Get selected tags
+	-l           Get current layout
+	-c           Get title and appid of focused clients
+	-v           Get visibility of statusbar
+	-m           Get fullscreen status
+	-f           Get floating status
+	-x           Get focused client geometry
+	-e           Get name of last focused layer
+	-k           Get current keyboard layout
+	-b           Get current keybind mode
+	-A           Get scale factor of monitor
+
+SET OPTIONS (used with -s):
+	-o <output>         Select output (monitor)
+	-t <tags>           Set selected tags (can be used with [+-^.] modifiers)
+	-l <layout>         Set current layout
+	-c <tags>           Get title and appid of focused client
+	-d <cmd>,<args...>  Dispatch internal command (max 5 args)

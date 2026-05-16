@@ -1,0 +1,24 @@
+== tray/status notifier bus ==
+:1.8974                                                                       223307 rustdesk        npittas :1.8974       session-c221.scope c221    -
+:1.8975                                                                       223307 rustdesk        npittas :1.8975       session-c221.scope c221    -
+org.kde.StatusNotifierHost-278439-1778890758476                               278439 qs              npittas :1.8991       user@1000.service  -       -
+org.kde.StatusNotifierWatcher                                                 278439 qs              npittas :1.8991       user@1000.service  -       -
+== status notifier object tree for watcher ==
+├─ /StatusNotifierWatcher
+└─ /org
+  └─ /org/freedesktop
+    └─ /org/freedesktop/Notifications
+== processes ==
+2289 /usr/bin/rustdesk --service
+222119 /usr/share/rustdesk/rustdesk --tray
+222341 /home/npittas/.dropbox-dist/dropbox-lnx.x86_64-252.4.3485/dropbox
+222357 /usr/bin/sunshine
+223297 sudo -E XDG_RUNTIME_DIR=/run/user/1000 -u npittas /usr/share/rustdesk/rustdesk --server
+223299 /usr/share/rustdesk/rustdesk --server
+223307 /usr/share/rustdesk/rustdesk --tray
+278422 dms run
+278439 qs -p /usr/share/quickshell/dms
+800090 /bin/bash -c { echo '== tray/status notifier bus =='; busctl --user list | grep -Ei 'StatusNotifier|appindicator|Ayatana|dropbox|sunshine|rustdesk' || true; echo '== status notifier object tree for watcher =='; busctl --user tree org.kde.StatusNotifierWatcher 2>/dev/null | head -80 || true; echo '== processes =='; pgrep -af 'dropbox|sunshine|rustdesk|dms|qs -p|quickshell' | head -80; echo '== dms log latest status tray? =='; ls -t /home/npittas/dms-kde-workstation/notes/mango-dms-manual-run-*.log 2>/dev/null | head -1 | xargs -r tail -120 | grep -Ei 'tray|status|dropbox|sunshine|rustdesk|watcher|indicator' || true; } | tee /home/npittas/dms-kde-workstation/notes/mango-tray-debug-$(date +%Y%m%d-%H%M%S).txt
+800091 /bin/bash -c { echo '== tray/status notifier bus =='; busctl --user list | grep -Ei 'StatusNotifier|appindicator|Ayatana|dropbox|sunshine|rustdesk' || true; echo '== status notifier object tree for watcher =='; busctl --user tree org.kde.StatusNotifierWatcher 2>/dev/null | head -80 || true; echo '== processes =='; pgrep -af 'dropbox|sunshine|rustdesk|dms|qs -p|quickshell' | head -80; echo '== dms log latest status tray? =='; ls -t /home/npittas/dms-kde-workstation/notes/mango-dms-manual-run-*.log 2>/dev/null | head -1 | xargs -r tail -120 | grep -Ei 'tray|status|dropbox|sunshine|rustdesk|watcher|indicator' || true; } | tee /home/npittas/dms-kde-workstation/notes/mango-tray-debug-$(date +%Y%m%d-%H%M%S).txt
+800092 tee /home/npittas/dms-kde-workstation/notes/mango-tray-debug-20260516-034210.txt
+== dms log latest status tray? ==

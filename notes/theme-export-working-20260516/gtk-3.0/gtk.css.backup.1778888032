@@ -1,0 +1,138 @@
+/*
+ * GTK3 portal theme glue for niri/Dank/Matugen.
+ * Keep this file as overrides; Matugen may regenerate dank-colors.css.
+ */
+@import url("dank-colors.css");
+@import url("colors.css");
+
+@define-color theme_bg_color @window_bg_color;
+@define-color theme_fg_color @window_fg_color;
+@define-color theme_base_color @view_bg_color;
+@define-color theme_text_color @view_fg_color;
+@define-color theme_selected_bg_color @accent_bg_color;
+@define-color theme_selected_fg_color @accent_fg_color;
+@define-color borders alpha(@window_fg_color, 0.18);
+@define-color insensitive_bg_color mix(@window_bg_color, @window_fg_color, 0.08);
+@define-color insensitive_fg_color alpha(@window_fg_color, 0.55);
+
+* {
+  caret-color: @accent_bg_color;
+  -gtk-icon-style: symbolic;
+}
+
+.background,
+window,
+dialog,
+filechooser,
+filechooser paned,
+filechooser box,
+.view,
+viewport,
+scrolledwindow,
+stack,
+notebook,
+notebook > stack:not(:only-child),
+placessidebar,
+placessidebar list,
+placessidebar row,
+treeview,
+list,
+row {
+  background-color: @window_bg_color;
+  color: @window_fg_color;
+}
+
+filechooser .view,
+filechooser iconview,
+filechooser treeview,
+filechooser list,
+filechooser row,
+textview text,
+entry,
+spinbutton,
+searchentry {
+  background-color: @view_bg_color;
+  color: @view_fg_color;
+}
+
+headerbar,
+.titlebar,
+filechooser headerbar,
+filechooser .titlebar,
+toolbar,
+menubar {
+  background: @headerbar_bg_color;
+  background-color: @headerbar_bg_color;
+  color: @headerbar_fg_color;
+  border-color: @borders;
+}
+
+popover,
+popover.background,
+menu,
+.menu,
+.context-menu {
+  background-color: @popover_bg_color;
+  color: @popover_fg_color;
+  border-color: @borders;
+}
+
+placessidebar,
+.sidebar,
+.sidebar viewport,
+.sidebar list,
+.sidebar row {
+  background-color: @sidebar_bg_color;
+  color: @sidebar_fg_color;
+}
+
+row:selected,
+.view:selected,
+treeview:selected,
+placessidebar row:selected,
+menuitem:hover,
+button.suggested-action,
+button:checked {
+  background-color: @accent_bg_color;
+  color: @accent_fg_color;
+}
+
+button,
+entry,
+spinbutton,
+combobox box,
+combobox button,
+.linked > button,
+.path-bar button {
+  background: mix(@card_bg_color, @window_bg_color, 0.35);
+  background-color: mix(@card_bg_color, @window_bg_color, 0.35);
+  color: @window_fg_color;
+  border: 1px solid @borders;
+  border-radius: 8px;
+}
+
+button:hover,
+entry:focus,
+spinbutton:focus,
+searchentry:focus {
+  background-color: @card_bg_color;
+  border-color: alpha(@accent_bg_color, 0.75);
+}
+
+button:disabled,
+entry:disabled,
+label:disabled {
+  background-color: @insensitive_bg_color;
+  color: @insensitive_fg_color;
+}
+
+separator {
+  background-color: @borders;
+  color: @borders;
+}
+
+rubberband,
+.rubberband {
+  background-color: alpha(@accent_bg_color, 0.25);
+  border-color: @accent_bg_color;
+}

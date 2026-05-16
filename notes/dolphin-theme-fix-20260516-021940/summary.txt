@@ -1,0 +1,2 @@
+stamp=20260516-021940
+base=/home/npittas/dms-kde-workstation/notes/dolphin-theme-fix-20260516-021940

@@ -1,0 +1,2 @@
+stamp=20260516-022823
+base=/home/npittas/dms-kde-workstation/notes/global-qt-env-fix-20260516-022823

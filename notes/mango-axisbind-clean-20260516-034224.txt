@@ -1,0 +1,5 @@
+== clean axisbinds ==
+323:axisbind=SUPER,UP,focusstack,prev
+324:axisbind=SUPER,DOWN,focusstack,next
+325:axisbind=SUPER,LEFT,focusdir,left
+326:axisbind=SUPER,RIGHT,focusdir,right

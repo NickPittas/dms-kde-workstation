@@ -1,0 +1,20 @@
+[Context]
+shared=ipc;network;
+sockets=pulseaudio;ssh-auth;wayland;x11;
+devices=dri;
+filesystems=home;/media;xdg-run/gnupg:ro;/mnt;/run/media;~/.local/share/fonts:ro;xdg-run/app/com.discordapp.Discord:create;
+persistent=~/.ssh;
+
+[Session Bus Policy]
+org.freedesktop.secrets=talk
+
+[Environment]
+SSH_ASKPASS=/app/libexec/openssh/ssh-askpass
+OBSIDIAN_ENABLE_AUTOSCROLL=0
+PATH=/usr/bin:/app/bin:/app/texlive/bin:/app/texlive/bin/x86_64-linux:/app/texlive/bin/aarch64-linux
+OBSIDIAN_DISABLE_GPU=0
+GH_PATH=gh
+OBSIDIAN_CLEAN_CACHE=1
+DEBUG_LOG=0
+OBSIDIAN_USE_WAYLAND=1
+XCURSOR_PATH=/run/host/user-share/icons:/run/host/share/icons:~/.icons

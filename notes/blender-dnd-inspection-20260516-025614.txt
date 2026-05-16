@@ -1,0 +1,10 @@
+== blender command/package ==
+package blender is not installed
+
+== blender desktop files ==
+---/home/npittas/.local/share/applications/Blender 5.desktop
+Exec=/home/npittas/blender-5.0.1-linux-x64/blender-launcher
+Icon=/home/npittas/blender-5.0.1-linux-x64/blender.svg
+Name=Blender 5
+
+== blender flatpak permissions ==

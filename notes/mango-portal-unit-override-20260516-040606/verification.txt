@@ -1,0 +1,26 @@
+== show deps ==
+Requires=basic.target session.slice dbus.socket
+Requisite=
+Wants=
+PartOf=
+After=basic.target session.slice -.mount home.mount dbus.socket
+ActiveState=active
+SubState=running
+== status ==
+● xdg-desktop-portal.service - Portal service (Mango-compatible user override)
+     Loaded: loaded (/home/npittas/.config/systemd/user/xdg-desktop-portal.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: active (running) since Sat 2026-05-16 04:06:06 EEST; 2s ago
+ Invocation: ad8f9148ad1947609ecb92d5eda14270
+   Main PID: 1361937 (xdg-desktop-por)
+      Tasks: 8 (limit: 154119)
+     Memory: 4.7M (peak: 6M)
+        CPU: 26ms
+     CGroup: /user.slice/user-1000.slice/user@1000.service/session.slice/xdg-desktop-portal.service
+             └─1361937 /usr/libexec/xdg-desktop-portal
+
+May 16 04:06:06 fedora systemd[2660]: Starting xdg-desktop-portal.service - Portal service (Mango-compatible user override)...
+May 16 04:06:06 fedora systemd[2660]: Started xdg-desktop-portal.service - Portal service (Mango-compatible user override).
+== bus ==
+org.freedesktop.portal.Desktop                                               1361937 xdg-desktop-por npittas :1.9070       user@1000.service  -       -

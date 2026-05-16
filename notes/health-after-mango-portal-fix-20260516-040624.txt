@@ -1,0 +1,106 @@
+
+== Session ==
+XDG_SESSION_TYPE=wayland
+XDG_CURRENT_DESKTOP=mango
+XDG_SESSION_DESKTOP=mango:wlroots
+WAYLAND_DISPLAY=wayland-0
+DISPLAY=:1
+
+== Core commands ==
+OK   dms present: /usr/bin/dms
+OK   quickshell present: /usr/bin/quickshell
+OK   mango present: /usr/bin/mango
+OK   mmsg present: /usr/bin/mmsg
+OK   niri present: /usr/bin/niri
+OK   xwayland-satellite present: /usr/bin/xwayland-satellite
+mango 0.13.0(release)
+
+== Compositor profile ==
+OK   active compositor appears to be Mango
+
+== Mango baseline ==
+OK   Mango config exists: /home/npittas/.config/mango/config.conf
+OK   DMS direct startup configured
+OK   Dropbox autostart configured
+OK   Sunshine autostart configured
+OK   Vicinae autostart configured
+OK   Scroller default tag rules configured
+OK   Super+wheel next configured
+OK   Super+wheel prev configured
+OK   Mango Workstation Menu bind configured
+HDMI-A-1 layout S
+
+== Portal services ==
+OK   xdg-desktop-portal.service active
+WARN xdg-desktop-portal-kde.service not active
+OK   xdg-desktop-portal-wlr.service active
+OK   xdg-desktop-portal-gtk.service active
+
+== Portal config candidates ==
+OK   /home/npittas/.config/xdg-desktop-portal/mango-portals.conf exists
+OK   /home/npittas/.config/xdg-desktop-portal/niri-portals.conf exists
+WARN /home/npittas/.config/xdg-desktop-portal/portals.conf missing
+OK   /usr/share/xdg-desktop-portal/mango-portals.conf exists
+
+== KDE/Qt workstation apps ==
+OK   dolphin
+OK   kate
+OK   okular
+OK   gwenview
+OK   ark
+OK   kcalc
+OK   filelight
+OK   partitionmanager
+OK   plasma-discover
+OK   kwalletmanager
+WARN spectacle installed but rejected for niri/Mango baseline; use grim/slurp/swappy
+
+== Admin/helper apps ==
+OK   nm-connection-editor
+OK   blueman-manager
+OK   pavucontrol
+OK   qpwgraph
+OK   firewall-config
+OK   system-config-printer
+OK   fuzzel
+OK   wl-copy
+OK   grim
+OK   slurp
+OK   swappy
+OK   wf-recorder
+OK   flatseal
+
+== Theme baseline ==
+OK   qt5ct custom palette configured
+OK   qt6ct custom palette configured
+OK   GTK3 settings exist
+OK   GTK4 settings exist
+
+== Default apps ==
+OK   inode/directory -> org.kde.dolphin.desktop
+OK   application/pdf -> okularApplication_pdf.desktop
+OK   image/png -> org.kde.gwenview.desktop
+OK   application/zip -> org.kde.ark.desktop
+OK   text/plain -> dev.zed.Zed.desktop
+OK   x-scheme-handler/http -> app.zen_browser.zen.desktop
+
+== Flatpak app overrides ==
+OK   Obsidian Wayland override configured
+
+== Agents/services ==
+OK   dropbox.service active
+OK   app-dev.lizardbyte.app.Sunshine.service active
+OK   vicinae.service active
+OK   pipewire.service active
+OK   wireplumber.service active
+OK   keyring/wallet appears running
+
+== NVIDIA ==
+NVIDIA GeForce RTX 4090, 595.71.05
+
+== Known workstation blockers ==
+OK   Mango DnD into Blender/Nuke: user-confirmed working
+WARN DMS indicators/tray under Mango incomplete; needs DMS source investigation
+WARN No native Mango settings GUI found; temporary Mango Workstation Menu exists
+
+== Done ==

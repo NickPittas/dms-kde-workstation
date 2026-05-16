@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APPLY=0
+BACKUP_ROOT="$HOME/.local/state/dms-kde-workstation/backups"
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/restore-mango-baseline [--apply]
+
+Restore files managed by scripts/apply-mango-baseline from the newest available
+backup under ~/.local/state/dms-kde-workstation/backups.
+
+Dry-run is the default. Pass --apply to restore files.
+EOF
+}
+
+log() { printf '%s\n' "$*"; }
+run() { if [ "$APPLY" -eq 1 ]; then log "+ $*"; "$@"; else log "DRY-RUN: $*"; fi; }
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --apply) APPLY=1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) log "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+managed=(
+  ".config/mango/config.conf"
+  ".config/systemd/user/xdg-desktop-portal.service"
+  ".config/xdg-desktop-portal/mango-portals.conf"
+  ".config/mimeapps.list"
+  ".local/bin/dms-region-screenshot-edit"
+  ".local/bin/dms-full-screenshot-edit"
+  ".local/bin/dms-region-screenshot-copy"
+  ".local/bin/mango-workstation-menu"
+  ".local/bin/dms-workstation-service-indicator"
+  ".local/bin/dms-mango-settings"
+  ".local/bin/dms-mango-post-startup"
+  ".config/dms-kde-workstation/startup.json"
+  ".local/share/applications/dms-region-screenshot-edit.desktop"
+  ".local/share/applications/dms-full-screenshot-edit.desktop"
+  ".local/share/applications/dms-region-screenshot-copy.desktop"
+  ".local/share/applications/dms-mango-settings.desktop"
+)
+
+newest_backup_for() {
+  local rel="$1" found=""
+  while IFS= read -r candidate; do
+    found="$candidate"
+    break
+  done < <(find "$BACKUP_ROOT" -path "*/$rel" -type f 2>/dev/null | sort -r)
+  printf '%s' "$found"
+}
+
+log "DMS Mango baseline restore"
+[ "$APPLY" -eq 1 ] && log "Mode: APPLY" || log "Mode: DRY-RUN"
+
+for rel in "${managed[@]}"; do
+  src="$(newest_backup_for "$rel")"
+  dest="$HOME/$rel"
+  if [ -n "$src" ]; then
+    run mkdir -p "$(dirname "$dest")"
+    run cp -a "$src" "$dest"
+  else
+    log "WARN no backup found for $dest"
+  fi
+done
+
+run systemctl --user daemon-reload
+
+cat <<'EOF'
+
+Next verification:
+  scripts/dms-workstation-health
+
+If this was dry-run, re-run with --apply to restore files.
+EOF

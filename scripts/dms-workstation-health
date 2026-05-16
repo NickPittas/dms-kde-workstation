@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+set -u
+
+ok() { printf 'OK   %s\n' "$*"; }
+warn() { printf 'WARN %s\n' "$*"; }
+fail() { printf 'FAIL %s\n' "$*"; }
+has() { command -v "$1" >/dev/null 2>&1; }
+section() { printf '\n== %s ==\n' "$*"; }
+file_has() { [ -f "$1" ] && grep -q -- "$2" "$1"; }
+
+section "Session"
+printf 'XDG_SESSION_TYPE=%s\n' "${XDG_SESSION_TYPE:-unset}"
+printf 'XDG_CURRENT_DESKTOP=%s\n' "${XDG_CURRENT_DESKTOP:-unset}"
+printf 'XDG_SESSION_DESKTOP=%s\n' "${XDG_SESSION_DESKTOP:-unset}"
+printf 'WAYLAND_DISPLAY=%s\n' "${WAYLAND_DISPLAY:-unset}"
+printf 'DISPLAY=%s\n' "${DISPLAY:-unset}"
+
+section "Core commands"
+for cmd in dms quickshell mango mmsg niri xwayland-satellite; do
+  if has "$cmd"; then ok "$cmd present: $(command -v "$cmd")"; else warn "$cmd missing"; fi
+done
+if has mango; then mango -v 2>/dev/null || true; fi
+
+section "Compositor profile"
+case "${XDG_CURRENT_DESKTOP:-}" in
+  mango*) ok "active compositor appears to be Mango" ;;
+  niri*) warn "active compositor is niri; Mango is primary candidate for creative workstation" ;;
+  *) warn "unknown/non-target compositor: ${XDG_CURRENT_DESKTOP:-unset}" ;;
+esac
+
+section "Mango baseline"
+MANGO_CONF="$HOME/.config/mango/config.conf"
+if [ -f "$MANGO_CONF" ]; then
+  ok "Mango config exists: $MANGO_CONF"
+  file_has "$MANGO_CONF" 'exec-once=dms run' && ok "DMS direct startup configured" || warn "DMS direct startup missing"
+  STARTUP_JSON="$HOME/.config/dms-kde-workstation/startup.json"
+  if [ -f "$STARTUP_JSON" ]; then
+    grep -q 'dropbox.service' "$STARTUP_JSON" && ok "Dropbox tray-ready startup configured" || warn "Dropbox tray-ready startup missing"
+    grep -q 'app-dev.lizardbyte.app.Sunshine.service' "$STARTUP_JSON" && ok "Sunshine tray-ready startup configured" || warn "Sunshine tray-ready startup missing"
+  else
+    warn "DMS Mango startup config missing: $STARTUP_JSON"
+  fi
+  file_has "$MANGO_CONF" 'vicinae.service' && ok "Vicinae autostart configured" || warn "Vicinae autostart missing"
+  file_has "$MANGO_CONF" 'layout_name:scroller' && ok "Scroller default tag rules configured" || warn "Scroller default tag rules missing"
+  file_has "$MANGO_CONF" 'axisbind=SUPER,DOWN,focusstack,next' && ok "Super+wheel next configured" || warn "Super+wheel next missing"
+  file_has "$MANGO_CONF" 'axisbind=SUPER,UP,focusstack,prev' && ok "Super+wheel prev configured" || warn "Super+wheel prev missing"
+  file_has "$MANGO_CONF" 'mango-workstation-menu' && ok "Mango Workstation Menu bind configured" || warn "Mango Workstation Menu bind missing"
+  file_has "$MANGO_CONF" 'dms-mango-post-startup' && ok "Additive Mango post-startup helper configured" || warn "Mango post-startup helper missing"
+  file_has "$MANGO_CONF" 'import-environment WAYLAND_DISPLAY DISPLAY' && ok "Mango imports display environment into user services" || warn "Mango display environment import missing"
+else
+  fail "Mango config missing: $MANGO_CONF"
+fi
+if has mmsg && [ "${XDG_CURRENT_DESKTOP:-}" = "mango" ]; then
+  mmsg -g -l 2>/dev/null || warn "mmsg current layout failed"
+fi
+
+section "Portal services"
+for svc in xdg-desktop-portal.service xdg-desktop-portal-kde.service xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service; do
+  if systemctl --user is-active --quiet "$svc"; then ok "$svc active"; else warn "$svc not active"; fi
+done
+
+section "Portal config candidates"
+for f in "$HOME/.config/xdg-desktop-portal/mango-portals.conf" "$HOME/.config/xdg-desktop-portal/niri-portals.conf" "$HOME/.config/xdg-desktop-portal/portals.conf" /usr/share/xdg-desktop-portal/mango-portals.conf; do
+  if [ -f "$f" ]; then ok "$f exists"; else warn "$f missing"; fi
+done
+
+section "KDE/Qt workstation apps"
+for cmd in dolphin kate okular gwenview ark kcalc filelight partitionmanager plasma-discover; do
+  if has "$cmd"; then ok "$cmd"; else warn "$cmd missing"; fi
+done
+if has kwalletmanager || has kwalletmanager5; then ok "kwalletmanager"; else warn "kwalletmanager missing"; fi
+has spectacle && warn "spectacle installed but rejected for niri/Mango baseline; use grim/slurp/swappy" || ok "spectacle absent"
+
+section "Admin/helper apps"
+for cmd in nm-connection-editor blueman-manager pavucontrol qpwgraph firewall-config system-config-printer fuzzel wl-copy grim slurp swappy wf-recorder; do
+  if has "$cmd"; then ok "$cmd"; else warn "$cmd missing"; fi
+done
+if has flatseal || has com.github.tchx84.Flatseal; then ok "flatseal"; else warn "flatseal missing"; fi
+
+section "Theme baseline"
+[ -f "$HOME/.config/qt5ct/qt5ct.conf" ] && grep -q 'custom_palette=true' "$HOME/.config/qt5ct/qt5ct.conf" && ok "qt5ct custom palette configured" || warn "qt5ct custom palette not configured"
+[ -f "$HOME/.config/qt6ct/qt6ct.conf" ] && grep -q 'custom_palette=true' "$HOME/.config/qt6ct/qt6ct.conf" && ok "qt6ct custom palette configured" || warn "qt6ct custom palette not configured"
+[ -f "$HOME/.config/gtk-3.0/settings.ini" ] && ok "GTK3 settings exist" || warn "GTK3 settings missing"
+[ -f "$HOME/.config/gtk-4.0/settings.ini" ] && ok "GTK4 settings exist" || warn "GTK4 settings missing"
+
+section "Default apps"
+check_default() {
+  local mime="$1" expected="$2" actual
+  actual="$(xdg-mime query default "$mime" 2>/dev/null || true)"
+  [ "$actual" = "$expected" ] && ok "$mime -> $expected" || warn "$mime -> ${actual:-unset}, expected $expected"
+}
+check_default inode/directory org.kde.dolphin.desktop
+check_default application/pdf okularApplication_pdf.desktop
+check_default image/png org.kde.gwenview.desktop
+check_default application/zip org.kde.ark.desktop
+check_default text/plain dev.zed.Zed.desktop
+check_default x-scheme-handler/http app.zen_browser.zen.desktop
+
+section "Flatpak app overrides"
+if has flatpak; then
+  flatpak info --show-permissions md.obsidian.Obsidian 2>/dev/null | grep -q 'OBSIDIAN_USE_WAYLAND=1' && ok "Obsidian Wayland override configured" || warn "Obsidian Wayland override missing"
+else
+  warn "flatpak missing"
+fi
+
+section "Agents/services"
+for svc in dropbox.service app-dev.lizardbyte.app.Sunshine.service vicinae.service pipewire.service wireplumber.service; do
+  if systemctl --user is-active --quiet "$svc"; then ok "$svc active"; else warn "$svc not active"; fi
+done
+pgrep -af 'dms-workstation-service-indicator' >/dev/null && ok "Workstation service indicator running" || warn "Workstation service indicator not running"
+[ -x "$HOME/.local/bin/dms-mango-post-startup" ] && ok "dms-mango-post-startup installed" || warn "dms-mango-post-startup missing"
+[ -f "$HOME/.config/dms-kde-workstation/startup.json" ] && ok "DMS Mango startup config exists" || warn "DMS Mango startup config missing"
+pgrep -x xembedsniproxy >/dev/null && ok "xembedsniproxy running" || warn "xembedsniproxy not running; XEmbed tray icons may be missing"
+pgrep -af 'gnome-keyring|kwallet|ksecretd' >/dev/null && ok "keyring/wallet appears running" || warn "keyring/wallet not detected"
+
+section "Tray/status indicators"
+if command -v dbus-send >/dev/null 2>&1; then
+  tray_items="$(dbus-send --session --print-reply --dest=org.kde.StatusNotifierWatcher /StatusNotifierWatcher org.freedesktop.DBus.Properties.Get string:org.kde.StatusNotifierWatcher string:RegisteredStatusNotifierItems 2>/dev/null || true)"
+  echo "$tray_items" | grep -qi 'dropbox' && ok "Dropbox real StatusNotifier item registered" || warn "Dropbox StatusNotifier item not detected"
+  echo "$tray_items" | grep -Eqi 'sunshine|trayid' && ok "Sunshine/host tray StatusNotifier item registered" || warn "Sunshine StatusNotifier item not detected"
+else
+  warn "dbus-send missing; cannot inspect StatusNotifierWatcher"
+fi
+
+section "Audio/HDMI"
+if has wpctl; then
+  wpctl status 2>/dev/null | grep -qi 'HDMI' && ok "HDMI audio sink visible to PipeWire" || warn "HDMI audio sink not visible"
+else
+  warn "wpctl missing"
+fi
+
+section "Ethernet carrier"
+for dev in enp18s0 enp6s0; do
+  if [ -e "/sys/class/net/$dev/carrier" ]; then
+    carrier="$(cat "/sys/class/net/$dev/carrier" 2>/dev/null || echo 0)"
+    [ "$carrier" = 1 ] && ok "$dev carrier detected" || warn "$dev no carrier/link detected"
+  fi
+done
+
+section "NVIDIA"
+if has nvidia-smi; then
+  nvidia-smi --query-gpu=name,driver_version --format=csv,noheader 2>/dev/null || warn "nvidia-smi failed"
+else
+  warn "nvidia-smi missing/not NVIDIA"
+fi
+
+section "Known workstation blockers"
+ok "Mango DnD into Blender/Nuke: user-confirmed working"
+ok "DMS service visibility under Mango: prototype Workstation Services tray indicator user-confirmed visible"
+ok "DMS Mango Settings companion GUI installed; native DMS integration still future work"
+
+section "Done"

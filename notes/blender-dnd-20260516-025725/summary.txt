@@ -1,0 +1,4 @@
+Created Blender X11 launcher and Dolphin service menu.
+Launcher: ~/.local/share/applications/Blender-5-X11.desktop
+Wrapper: ~/.local/bin/blender5-x11
+Service menu: ~/.local/share/kio/servicemenus/blender5-open.desktop

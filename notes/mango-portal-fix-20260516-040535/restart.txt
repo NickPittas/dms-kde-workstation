@@ -1,0 +1,1 @@
+A dependency job for xdg-desktop-portal.service failed. See 'journalctl -xe' for details.

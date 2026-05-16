@@ -1,0 +1,29 @@
+== user services important ==
+app-dev.lizardbyte.app.Sunshine.service                      loaded active running Self-hosted game stream host for Moonlight
+at-spi-dbus-bus.service                                      loaded active running Accessibility services bus
+dbus-:1.2-org.freedesktop.secrets@0.service                  loaded active running dbus-:1.2-org.freedesktop.secrets@0.service
+dbus-:1.2-org.kde.kdeconnect@0.service                       loaded active running dbus-:1.2-org.kde.kdeconnect@0.service
+dbus-:1.2-org.kde.kded6@0.service                            loaded active running dbus-:1.2-org.kde.kded6@0.service
+dbus-:1.2-org.kde.kwalletd6@1.service                        loaded active running dbus-:1.2-org.kde.kwalletd6@1.service
+dbus-:1.2-org.kde.secretservicecompat@1.service              loaded active running dbus-:1.2-org.kde.secretservicecompat@1.service
+dbus-:1.65-org.a11y.atspi.Registry@0.service                 loaded active running dbus-:1.65-org.a11y.atspi.Registry@0.service
+dbus-broker.service                                          loaded active running D-Bus User Message Bus
+dms.service                                                  loaded active running Dank Material Shell (DMS)
+dropbox.service                                              loaded active running Dropbox daemon
+niri.service                                                 loaded active running A scrollable-tiling Wayland compositor
+pipewire-pulse.service                                       loaded active running PipeWire PulseAudio
+pipewire.service                                             loaded active running PipeWire Multimedia Service
+wireplumber.service                                          loaded active running Multimedia Service Session Manager
+xdg-desktop-portal-gnome.service                             loaded active running Portal service (GNOME implementation)
+xdg-desktop-portal-gtk.service                               loaded active running Portal service (GTK/GNOME implementation)
+xdg-desktop-portal.service                                   loaded active running Portal service
+xdg-document-portal.service                                  loaded active running flatpak document portal service
+xdg-permission-store.service                                 loaded active running sandboxed app permission store
+
+== enabled/wants under niri ==
+/home/npittas/.config/systemd/user/dropbox.service
+/home/npittas/.config/systemd/user/graphical-session.target.wants/app-dev.lizardbyte.app.Sunshine.service
+/home/npittas/.config/systemd/user/niri.service.wants/app-dev.lizardbyte.app.Sunshine.service
+/home/npittas/.config/systemd/user/niri.service.wants/dms.service
+/home/npittas/.config/systemd/user/niri.service.wants/dropbox.service
+/home/npittas/.config/systemd/user/sunshine.service

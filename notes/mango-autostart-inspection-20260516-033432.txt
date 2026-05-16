@@ -1,0 +1,43 @@
+== niri wants ==
+app-dev.lizardbyte.app.Sunshine.service -> /usr/lib/systemd/user/app-dev.lizardbyte.app.Sunshine.service
+dms.service -> /usr/lib/systemd/user/dms.service
+dropbox.service -> /home/npittas/.config/systemd/user/dropbox.service
+
+== graphical wants relevant ==
+app-dev.lizardbyte.app.Sunshine.service -> /usr/lib/systemd/user/app-dev.lizardbyte.app.Sunshine.service
+vicinae.service -> /usr/lib/systemd/user/vicinae.service
+
+== user autostart ==
+/home/npittas/.config/autostart/zynk.desktop
+/home/npittas/.config/autostart/zynk.desktop:Name=zynk
+/home/npittas/.config/autostart/zynk.desktop:Exec=/tmp/.mount_zynk-uLLJbfl/zynk
+/home/npittas/.config/autostart/org.kde.krfb.desktop
+/home/npittas/.config/autostart/org.kde.krfb.desktop:Exec=krfb -qwindowtitle %c
+/home/npittas/.config/autostart/org.kde.krfb.desktop:Name=Krfb
+/home/npittas/.config/autostart/remmina-applet.desktop
+/home/npittas/.config/autostart/remmina-applet.desktop:Name=Remmina Applet
+/home/npittas/.config/autostart/remmina-applet.desktop:Exec=remmina -i
+/home/npittas/.config/autostart/remmina-applet.desktop:Hidden=false
+/home/npittas/.config/autostart/kde-material-you-colors.desktop
+/home/npittas/.config/autostart/kde-material-you-colors.desktop:Exec=/usr/bin/kde-material-you-colors
+/home/npittas/.config/autostart/kde-material-you-colors.desktop:Name=KDE Material You Colors
+/home/npittas/.config/autostart/kde-material-you-colors.desktop:Hidden=true
+/home/npittas/.config/autostart/vicinae.desktop
+/home/npittas/.config/autostart/vicinae.desktop:Exec=vicinae server --replace
+/home/npittas/.config/autostart/vicinae.desktop:Name=Vicinae
+/home/npittas/.config/autostart/vicinae.desktop:Exec=vicinae close
+/home/npittas/.config/autostart/vicinae.desktop:Name=Close Vicinae Window
+/home/npittas/.config/autostart/vicinae.desktop:Exec=vicinae open
+/home/npittas/.config/autostart/vicinae.desktop:Name=Open Vicinae Window
+/home/npittas/.config/autostart/vicinae.desktop:Exec=vicinae toggle
+/home/npittas/.config/autostart/vicinae.desktop:Name=Toggle Vicinae Window
+
+== running target apps ==
+app-dev.lizardbyte.app.Sunshine.service        loaded active running Self-hosted game stream host for Moonlight
+dropbox.service                                loaded active running Dropbox daemon
+pipewire-pulse.service                         loaded active running PipeWire PulseAudio
+pipewire.service                               loaded active running PipeWire Multimedia Service
+wireplumber.service                            loaded active running Multimedia Service Session Manager
+xdg-desktop-portal-gtk.service                 loaded active running Portal service (GTK/GNOME implementation)
+xdg-desktop-portal-wlr.service                 loaded active running Portal service (wlroots implementation)
+xdg-document-portal.service                    loaded active running flatpak document portal service

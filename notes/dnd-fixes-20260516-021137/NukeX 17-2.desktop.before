@@ -1,0 +1,14 @@
+[Desktop Entry]
+Comment=
+Exec=ghostty -e env QT_QPA_PLATFORM=xcb LC_NUMERIC=C /opt/Nuke17.0v1/Nuke17.0 --hiero
+Icon=/opt/Nuke17.0v1/plugins/icons/HieroApp64.png
+Name=Hiero 17.0v1
+NoDisplay=false
+Path=
+PrefersNonDefaultGPU=false
+StartupNotify=true
+Terminal=false
+TerminalOptions=
+Type=Application
+X-KDE-SubstituteUID=false
+X-KDE-Username=

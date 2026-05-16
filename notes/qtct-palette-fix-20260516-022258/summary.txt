@@ -1,0 +1,1 @@
+Applied qtct palette fix. Backups in /home/npittas/dms-kde-workstation/notes/qtct-palette-fix-20260516-022258.

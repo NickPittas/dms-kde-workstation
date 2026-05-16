@@ -1,0 +1,4 @@
+
+thread 'main' (2559359) panicked at src/main.rs:241:17:
+Unrecognized argument: -V
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

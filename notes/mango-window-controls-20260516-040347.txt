@@ -1,0 +1,23 @@
+== menu main/window snippets ==
+75:window_menu() {
+77:  choice=$(menu "Close focused window
+78:Minimize focused window
+79:Restore minimized windows
+80:Toggle maximize
+84:Current window" "Window: ")
+86:    'Close focused window') mmsg -s -d killclient ;;
+87:    'Minimize focused window') mmsg -s -d minimized ;;
+88:    'Restore minimized windows') mmsg -s -d restore_minimized ;;
+89:    'Toggle maximize') mmsg -s -d togglemaximizescreen ;;
+159:Windows list
+165:    'Windows list') mmsg -g -c | fuzzel --dmenu --prompt='Windows: ' >/dev/null || true ;;
+188:Window
+196:    Window) window_menu ;;
+== binds ==
+334:# DMS KDE Workstation Mango window controls
+335-bind=SUPER,q,killclient,
+336-bind=SUPER,m,minimized,
+337-bind=SUPER+SHIFT,m,restore_minimized
+338-bind=SUPER+SHIFT,Return,togglemaximizescreen,
+339-bind=SUPER+SHIFT,space,togglefloating,
+340-bind=SUPER+SHIFT,f,togglefullscreen,

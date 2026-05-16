@@ -1,0 +1,15 @@
+Updating and loading repositories:
+ terra                                  100% |   2.3 MiB/s |   1.3 MiB |  00m01s
+Repositories loaded.
+Package         Arch   Version Repository      Size
+Installing:
+ terra-release  noarch 0:44-9  terra      674.0   B
+Installing dependencies:
+ terra-gpg-keys noarch 0:44-4  terra       34.1 KiB
+
+Transaction Summary:
+ Installing:         2 packages
+
+Total size of inbound packages is 35 KiB. Need to download 35 KiB.
+After this operation, 35 KiB extra will be used (install 35 KiB, remove 0 B).
+Operation aborted by the user.

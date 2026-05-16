@@ -1,0 +1,55 @@
+== flatpak overrides Zed ==
+[Context]
+shared=ipc;network;
+sockets=fallback-x11;gpg-agent;pulseaudio;ssh-auth;wayland;x11;
+devices=dri;
+filesystems=home;
+
+[Session Bus Policy]
+org.freedesktop.Flatpak=talk
+org.freedesktop.secrets=talk
+
+[Environment]
+SSH_ASKPASS=/app/libexec/openssh/gnome-ssh-askpass
+ZED_UPDATE_EXPLANATION="Please use flatpak to update zed"
+== Obsidian ==
+[Context]
+shared=ipc;network;
+sockets=pulseaudio;ssh-auth;x11;
+devices=dri;
+filesystems=home;/media;xdg-run/gnupg:ro;/mnt;/run/media;~/.local/share/fonts:ro;xdg-run/app/com.discordapp.Discord:create;
+persistent=~/.ssh;
+
+[Session Bus Policy]
+org.freedesktop.secrets=talk
+
+[Environment]
+SSH_ASKPASS=/app/libexec/openssh/ssh-askpass
+OBSIDIAN_ENABLE_AUTOSCROLL=0
+PATH=/usr/bin:/app/bin:/app/texlive/bin:/app/texlive/bin/x86_64-linux:/app/texlive/bin/aarch64-linux
+OBSIDIAN_DISABLE_GPU=0
+GH_PATH=gh
+OBSIDIAN_CLEAN_CACHE=1
+DEBUG_LOG=0
+XCURSOR_PATH=/run/host/user-share/icons:/run/host/share/icons:~/.icons
+== Zen ==
+[Context]
+shared=ipc;network;
+sockets=cups;fallback-x11;pcsc;pulseaudio;wayland;x11;
+devices=all;
+features=devel;
+filesystems=xdg-download;/run/.heim_org.h5l.kcm-socket;xdg-run/speech-dispatcher:ro;
+persistent=.zen;
+
+[Session Bus Policy]
+org.gtk.vfs.*=talk
+org.mpris.MediaPlayer2.firefox.*=own
+org.mozilla.zen.*=own
+org.a11y.Bus=talk
+org.freedesktop.FileManager1=talk
+
+[System Bus Policy]
+org.freedesktop.NetworkManager=talk
+
+[Environment]
+DICPATH=/usr/share/hunspell

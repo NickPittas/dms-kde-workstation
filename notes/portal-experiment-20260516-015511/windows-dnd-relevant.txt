@@ -1,0 +1,19 @@
+  App ID: "dev.zed.Zed"
+  Is floating: no
+  PID: 2334927
+  Workspace ID: 16
+  Layout:
+    Tile size: 954 x 966
+    Scrolling position: column 3, tile 1
+    Window size: 954 x 966
+    Window offset in tile: 0 x 0
+--
+  Title: "I Used Niri Window Manager for a Full Work Day - Here Are My Thoughts - YouTube — Zen Browser"
+  App ID: "app.zen_browser.zen"
+  Is floating: no
+  PID: 2558197
+  Workspace ID: 16
+  Layout:
+    Tile size: 1920 x 974
+    Scrolling position: column 2, tile 1
+    Window size: 1920 x 974

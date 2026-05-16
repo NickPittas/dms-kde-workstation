@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+base="$HOME/dms-kde-workstation/notes/dolphin-theme-fix-20260516-021940"
+[ -d "$base" ] || { echo "Missing $base" >&2; exit 1; }
+cp "$HOME/.config/niri/dms/binds.kdl" "$HOME/.config/niri/dms/binds.kdl.before-dolphin-theme-restore-$(date +%Y%m%d-%H%M%S)"
+cp "$base/binds.kdl.before" "$HOME/.config/niri/dms/binds.kdl"
+cp "$base/dms-settings.before.json" "$HOME/.config/DankMaterialShell/settings.json"
+[ -f "$base/qt5ct.before.conf" ] && cp "$base/qt5ct.before.conf" "$HOME/.config/qt5ct/qt5ct.conf"
+[ -f "$base/qt6ct.before.conf" ] && cp "$base/qt6ct.before.conf" "$HOME/.config/qt6ct/qt6ct.conf"
+niri validate -c "$HOME/.config/niri/config.kdl"
+niri msg action reload-config || true
+dms restart || true
+echo "Restored Dolphin theme fix experiment 20260516-021940"

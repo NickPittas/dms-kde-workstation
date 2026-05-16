@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Screenshot Region (Edit)
+Comment=Select a screen region and edit it in Swappy
+Exec=/home/npittas/.local/bin/dms-region-screenshot-edit
+Icon=applets-screenshooter
+Type=Application
+Categories=Graphics;Utility;2DGraphics;
+Keywords=screenshot;screen;capture;swappy;grim;slurp;
+Terminal=false

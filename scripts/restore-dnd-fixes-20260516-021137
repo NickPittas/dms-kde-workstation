@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+base="$HOME/dms-kde-workstation/notes/dnd-fixes-20260516-021137"
+[ -d "$base" ] || { echo "Missing $base" >&2; exit 1; }
+# Restore Obsidian override by removing the specific additions we made.
+flatpak override --user --nosocket=wayland --unset-env=OBSIDIAN_USE_WAYLAND md.obsidian.Obsidian || true
+# Restore niri bind.
+cp "$HOME/.config/niri/dms/binds.kdl" "$HOME/.config/niri/dms/binds.kdl.before-dnd-restore-$(date +%Y%m%d-%H%M%S)"
+cp "$base/binds.kdl.before" "$HOME/.config/niri/dms/binds.kdl"
+niri validate -c "$HOME/.config/niri/config.kdl"
+niri msg action reload-config || true
+# Remove created helper launchers.
+rm -f "$HOME/.local/bin/dolphin-xwayland-for-nuke" \
+      "$HOME/.local/bin/nukex17-direct" \
+      "$HOME/.local/bin/nukestudio17-direct" \
+      "$HOME/.local/bin/hiero17-direct" \
+      "$HOME/.local/share/applications/org.kde.dolphin-xwayland-for-nuke.desktop" \
+      "$HOME/.local/share/applications/NukeX-17-direct.desktop" \
+      "$HOME/.local/share/applications/NukeStudio-17-direct.desktop" \
+      "$HOME/.local/share/applications/Hiero-17-direct.desktop"
+update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+echo "Restored DnD fixes from 20260516-021137"

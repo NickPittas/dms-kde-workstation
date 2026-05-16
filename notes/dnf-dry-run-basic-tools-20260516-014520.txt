@@ -1,0 +1,38 @@
+Updating and loading repositories:
+ Fedora 44 - x86_64 - Updates           100% |  19.7 KiB/s |  15.7 KiB |  00m01s
+ negativo17 - Nvidia                    100% |  20.8 KiB/s |   4.2 KiB |  00m00s
+Repositories loaded.
+Package                Arch   Version          Repository      Size
+Installing:
+ blueman               x86_64 1:2.4.6-6.fc44   fedora       6.1 MiB
+ flatseal              noarch 0:2.4.0-2.fc44   fedora     612.8 KiB
+ gnome-disk-utility    x86_64 0:46.1-4.fc44    fedora       6.7 MiB
+ gparted               x86_64 0:1.7.0-3.fc44   fedora       8.9 MiB
+ kate                  x86_64 0:26.04.0-1.fc44 updates     18.1 MiB
+ pavucontrol           x86_64 0:6.1-5.fc44     fedora     950.5 KiB
+ qpwgraph              x86_64 0:1.0.1-1.fc44   updates    789.4 KiB
+ swappy                x86_64 0:1.5.1-8.fc44   fedora     126.6 KiB
+ system-config-printer x86_64 0:1.5.18-17.fc44 fedora       1.8 MiB
+ wf-recorder           x86_64 0:0.6.0-2.fc44   fedora     146.1 KiB
+Installing dependencies:
+ cairomm1.16           x86_64 0:1.18.0-16.fc44 fedora     224.3 KiB
+ gjs                   x86_64 0:1.88.0-1.fc44  fedora       2.1 MiB
+ glibmm2.68            x86_64 0:2.88.0-1.fc44  fedora       3.3 MiB
+ gtkmm4.0              x86_64 0:4.22.0-1.fc44  fedora       5.5 MiB
+ javascriptcoregtk6.0  x86_64 0:2.52.3-1.fc44  updates     32.1 MiB
+ libhandy              x86_64 0:1.8.3-10.fc44  fedora       1.4 MiB
+ libsigc++30           x86_64 0:3.8.0-1.fc44   updates     95.9 KiB
+ mozjs140              x86_64 0:140.6.0-4.fc44 fedora      20.7 MiB
+ pangomm2.48           x86_64 0:2.56.1-3.fc44  fedora     312.3 KiB
+ webkitgtk6.0          x86_64 0:2.52.3-1.fc44  updates     91.3 MiB
+Installing weak dependencies:
+ fontawesome4-fonts    noarch 1:4.7.0-26.fc44  fedora     296.6 KiB
+ kate-krunner-plugin   x86_64 0:6.6.4-1.fc44   fedora      70.3 KiB
+ kate-plugins          x86_64 0:26.04.0-1.fc44 updates     13.1 MiB
+
+Transaction Summary:
+ Installing:        23 packages
+
+Total size of inbound packages is 63 MiB. Need to download 63 MiB.
+After this operation, 214 MiB extra will be used (install 214 MiB, remove 0 B).
+Operation aborted by the user.

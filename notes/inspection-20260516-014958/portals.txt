@@ -1,0 +1,101 @@
+== portal packages ==
+xdg-desktop-portal-1.21.2-1.fc44.x86_64
+xdg-desktop-portal-gnome-50.0-1.fc44.x86_64
+xdg-desktop-portal-gtk-1.15.3-3.fc44.x86_64
+xdg-desktop-portal-kde-6.6.4-1.fc44.x86_64
+xdg-desktop-portal-wlr-0.8.2-1.fc44.x86_64
+
+== portal services ==
+Unit xdg-desktop-portal-kde.service could not be found.
+● xdg-desktop-portal.service - Portal service
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: active (running) since Fri 2026-05-15 21:25:29 EEST; 4h 24min ago
+ Invocation: 47e9e48894cc439ab37a6d3accf481f8
+   Main PID: 195153 (xdg-desktop-por)
+      Tasks: 6 (limit: 154119)
+     Memory: 5.8M (peak: 16.4M)
+        CPU: 418ms
+     CGroup: /user.slice/user-1000.slice/user@1000.service/session.slice/xdg-desktop-portal.service
+             └─195153 /usr/libexec/xdg-desktop-portal
+
+May 15 21:25:29 fedora systemd[2660]: Starting xdg-desktop-portal.service - Portal service...
+May 15 21:25:29 fedora systemd[2660]: Started xdg-desktop-portal.service - Portal service.
+May 15 21:30:28 fedora /usr/libexec/xdg-desktop-portal[195153]: Failed to get application states: GDBus.Error:org.freedesktop.portal.Error.Failed: Could not get window list
+
+○ xdg-desktop-portal-wlr.service - Portal service (wlroots implementation)
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal-wlr.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: inactive (dead)
+
+● xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation)
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal-gtk.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: active (running) since Fri 2026-05-15 21:25:29 EEST; 4h 24min ago
+ Invocation: 28443fd2c5c748dda8696393df2f2a5b
+   Main PID: 195152 (xdg-desktop-por)
+      Tasks: 8 (limit: 154119)
+     Memory: 26.4M (peak: 79.7M)
+        CPU: 23.671s
+     CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/xdg-desktop-portal-gtk.service
+             └─195152 /usr/libexec/xdg-desktop-portal-gtk
+
+May 16 01:42:01 fedora xdg-desktop-portal-gtk[195152]: Failed to measure available space: The specified location is not supported
+May 16 01:42:01 fedora xdg-desktop-portal-gtk[195152]: Failed to measure available space: The specified location is not supported
+May 16 01:42:01 fedora xdg-desktop-portal-gtk[195152]: Failed to measure available space: The specified location is not supported
+May 16 01:42:01 fedora xdg-desktop-portal-gtk[195152]: Failed to measure available space: The specified location is not supported
+May 16 01:42:01 fedora xdg-desktop-portal-gtk[195152]: Failed to measure available space: The specified location is not supported
+May 16 01:42:01 fedora xdg-desktop-portal-gtk[195152]: Failed to measure available space: The specified location is not supported
+May 16 01:42:01 fedora xdg-desktop-portal-gtk[195152]: GFileInfo created without standard::size
+May 16 01:42:01 fedora xdg-desktop-portal-gtk[195152]: file ../gio/gfileinfo.c: line 1865 (g_file_info_get_size): should not be reached
+May 16 01:42:01 fedora xdg-desktop-portal-gtk[195152]: GFileInfo created without standard::size
+May 16 01:42:01 fedora xdg-desktop-portal-gtk[195152]: file ../gio/gfileinfo.c: line 1865 (g_file_info_get_size): should not be reached
+
+● xdg-desktop-portal-gnome.service - Portal service (GNOME implementation)
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal-gnome.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: active (running) since Fri 2026-05-15 21:25:29 EEST; 4h 24min ago
+ Invocation: 93831dff771f472f90dbfd05d564d864
+   Main PID: 195156 (xdg-desktop-por)
+      Tasks: 6 (limit: 154119)
+     Memory: 16.5M (peak: 17.6M)
+        CPU: 2.059s
+     CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/xdg-desktop-portal-gnome.service
+             └─195156 /usr/libexec/xdg-desktop-portal-gnome
+
+May 15 21:25:29 fedora systemd[2660]: Starting xdg-desktop-portal-gnome.service - Portal service (GNOME implementation)...
+May 15 21:25:29 fedora xdg-desktop-portal-gnome[195156]: Theme directory places/64 of theme klassy-dark has no size field
+May 15 21:25:29 fedora xdg-desktop-portal-gnome[195156]: Using GtkSettings:gtk-application-prefer-dark-theme with libadwaita is unsupported. Please use AdwStyleManager:color-scheme instead.
+May 15 21:25:29 fedora systemd[2660]: Started xdg-desktop-portal-gnome.service - Portal service (GNOME implementation).
+
+== portal configs ==
+--- /home/npittas/.config/xdg-desktop-portal/niri-portals.conf
+[preferred]
+default=gnome;gtk;
+org.freedesktop.impl.portal.FileChooser=gtk;
+org.freedesktop.impl.portal.Access=gtk;
+org.freedesktop.impl.portal.Notification=gtk;
+org.freedesktop.impl.portal.Secret=gnome-keyring;
+--- /usr/share/xdg-desktop-portal/kde-portals.conf
+[preferred]
+default=kde
+org.freedesktop.impl.portal.Settings=kde;gtk;
+org.freedesktop.impl.portal.Secret=kwallet
+--- /usr/share/xdg-desktop-portal/niri-portals.conf
+[preferred]
+default=gnome;gtk;
+org.freedesktop.impl.portal.Access=gtk;
+org.freedesktop.impl.portal.Notification=gtk;
+org.freedesktop.impl.portal.Secret=gnome-keyring;
+--- /usr/share/xdg-desktop-portal/wlroots-portals.conf
+[preferred]
+# Use xdg-desktop-portal-gtk for every portal interface...
+default=gtk
+# ... except for the ScreenCast, Screenshot and Settings (dark/light mode) interface
+org.freedesktop.impl.portal.ScreenCast=wlr
+org.freedesktop.impl.portal.Screenshot=wlr
+org.freedesktop.impl.portal.Settings=darkman

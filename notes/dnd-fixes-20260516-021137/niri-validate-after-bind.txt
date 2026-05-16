@@ -1,0 +1,2 @@
+[2m2026-05-15T23:11:37.145860Z[0m [34mDEBUG[0m [2mniri_config[0m[2m:[0m loaded config from "/home/npittas/.config/niri/config.kdl"
+[2m2026-05-15T23:11:37.145888Z[0m [32m INFO[0m [2mniri[0m[2m:[0m config is valid

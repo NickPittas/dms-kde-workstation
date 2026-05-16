@@ -1,0 +1,287 @@
+== gtk config ==
+---/home/npittas/.config/gtk-3.0/settings.ini
+-rw-r--r-- 1 npittas npittas 584 May 12 22:55 /home/npittas/.config/gtk-3.0/settings.ini
+[Settings]
+gtk-application-prefer-dark-theme=true
+gtk-button-images=true
+gtk-cursor-blink=true
+gtk-cursor-blink-time=1000
+gtk-cursor-theme-name=breeze_cursors
+gtk-cursor-theme-size=32
+gtk-decoration-layout=icon:minimize,maximize,close
+gtk-enable-animations=true
+gtk-font-name=JetBrains Mono NL,  12
+gtk-icon-theme-name=klassy-dark
+gtk-menu-images=true
+gtk-modules=colorreload-gtk-module:window-decorations-gtk-module
+gtk-primary-button-warps-slider=true
+gtk-sound-theme-name=freedesktop
+gtk-theme-name=catppuccin-macchiato-blue-standard+default
+gtk-toolbar-style=2
+gtk-xft-dpi=196608
+---/home/npittas/.config/gtk-3.0/gtk.css
+-rw-r--r-- 1 npittas npittas 2756 May 15 21:24 /home/npittas/.config/gtk-3.0/gtk.css
+/*
+ * GTK3 portal theme glue for niri/Dank/Matugen.
+ * Keep this file as overrides; Matugen may regenerate dank-colors.css.
+ */
+@import url("dank-colors.css");
+@import url("colors.css");
+
+@define-color theme_bg_color @window_bg_color;
+@define-color theme_fg_color @window_fg_color;
+@define-color theme_base_color @view_bg_color;
+@define-color theme_text_color @view_fg_color;
+@define-color theme_selected_bg_color @accent_bg_color;
+@define-color theme_selected_fg_color @accent_fg_color;
+@define-color borders alpha(@window_fg_color, 0.18);
+@define-color insensitive_bg_color mix(@window_bg_color, @window_fg_color, 0.08);
+@define-color insensitive_fg_color alpha(@window_fg_color, 0.55);
+
+* {
+  caret-color: @accent_bg_color;
+  -gtk-icon-style: symbolic;
+}
+
+.background,
+window,
+dialog,
+filechooser,
+filechooser paned,
+filechooser box,
+.view,
+viewport,
+scrolledwindow,
+stack,
+notebook,
+notebook > stack:not(:only-child),
+placessidebar,
+placessidebar list,
+placessidebar row,
+treeview,
+list,
+row {
+  background-color: @window_bg_color;
+  color: @window_fg_color;
+}
+
+filechooser .view,
+filechooser iconview,
+filechooser treeview,
+filechooser list,
+filechooser row,
+textview text,
+entry,
+spinbutton,
+searchentry {
+  background-color: @view_bg_color;
+  color: @view_fg_color;
+}
+
+headerbar,
+.titlebar,
+filechooser headerbar,
+filechooser .titlebar,
+toolbar,
+menubar {
+  background: @headerbar_bg_color;
+  background-color: @headerbar_bg_color;
+  color: @headerbar_fg_color;
+  border-color: @borders;
+}
+
+popover,
+popover.background,
+menu,
+.menu,
+.context-menu {
+  background-color: @popover_bg_color;
+  color: @popover_fg_color;
+  border-color: @borders;
+}
+
+placessidebar,
+.sidebar,
+.sidebar viewport,
+.sidebar list,
+.sidebar row {
+  background-color: @sidebar_bg_color;
+  color: @sidebar_fg_color;
+}
+
+row:selected,
+.view:selected,
+treeview:selected,
+placessidebar row:selected,
+menuitem:hover,
+button.suggested-action,
+button:checked {
+  background-color: @accent_bg_color;
+  color: @accent_fg_color;
+}
+
+button,
+entry,
+spinbutton,
+combobox box,
+combobox button,
+.linked > button,
+.path-bar button {
+  background: mix(@card_bg_color, @window_bg_color, 0.35);
+  background-color: mix(@card_bg_color, @window_bg_color, 0.35);
+  color: @window_fg_color;
+  border: 1px solid @borders;
+  border-radius: 8px;
+}
+
+button:hover,
+entry:focus,
+spinbutton:focus,
+searchentry:focus {
+  background-color: @card_bg_color;
+  border-color: alpha(@accent_bg_color, 0.75);
+}
+---/home/npittas/.config/gtk-4.0/settings.ini
+-rw-r--r-- 1 npittas npittas 455 May 12 22:55 /home/npittas/.config/gtk-4.0/settings.ini
+[Settings]
+gtk-application-prefer-dark-theme=true
+gtk-cursor-blink=true
+gtk-cursor-blink-time=1000
+gtk-cursor-theme-name=breeze_cursors
+gtk-cursor-theme-size=32
+gtk-decoration-layout=icon:minimize,maximize,close
+gtk-enable-animations=true
+gtk-font-name=JetBrains Mono NL,  12
+gtk-icon-theme-name=klassy-dark
+gtk-primary-button-warps-slider=true
+gtk-sound-theme-name=freedesktop
+gtk-theme-name=catppuccin-macchiato-blue-standard+default
+gtk-xft-dpi=196608
+---/home/npittas/.config/gtk-4.0/gtk.css
+-rw-r--r-- 1 npittas npittas 2463 May 15 21:25 /home/npittas/.config/gtk-4.0/gtk.css
+/*
+ * GTK4/libadwaita portal theme glue for niri/Dank/Matugen.
+ * Keep this file as overrides; Matugen may regenerate dank-colors.css.
+ */
+@import url("dank-colors.css");
+@import url("colors.css");
+
+@define-color theme_bg_color @window_bg_color;
+@define-color theme_fg_color @window_fg_color;
+@define-color theme_base_color @view_bg_color;
+@define-color theme_text_color @view_fg_color;
+@define-color theme_selected_bg_color @accent_bg_color;
+@define-color theme_selected_fg_color @accent_fg_color;
+@define-color borders alpha(@window_fg_color, 0.18);
+
+window,
+dialog,
+.background,
+contents,
+.view,
+viewport,
+scrolledwindow,
+stack,
+list,
+listview,
+gridview,
+columnview,
+row {
+  background-color: @window_bg_color;
+  color: @window_fg_color;
+}
+
+window.dialog,
+window.messagedialog,
+window.filechooser,
+filechooser,
+filechooserwidget {
+  background-color: @dialog_bg_color;
+  color: @dialog_fg_color;
+}
+
+.view,
+listview,
+gridview,
+columnview,
+textview text,
+entry,
+searchentry {
+  background-color: @view_bg_color;
+  color: @view_fg_color;
+}
+
+headerbar,
+.header-bar,
+windowhandle,
+toolbar {
+  background: @headerbar_bg_color;
+  background-color: @headerbar_bg_color;
+  color: @headerbar_fg_color;
+  border-color: @borders;
+}
+
+popover,
+popover contents,
+popover.background,
+menu,
+.context-menu {
+  background-color: @popover_bg_color;
+  color: @popover_fg_color;
+  border-color: @borders;
+}
+
+.sidebar,
+.navigation-sidebar,
+placessidebar,
+placessidebar list,
+placessidebar row {
+  background-color: @sidebar_bg_color;
+  color: @sidebar_fg_color;
+}
+
+row:selected,
+:selected,
+selection,
+modelbutton:hover,
+button.suggested-action,
+button:checked {
+  background-color: @accent_bg_color;
+  color: @accent_fg_color;
+}
+
+button,
+entry,
+spinbutton,
+combobox,
+menubutton,
+dropdown,
+.path-bar button {
+  background: mix(@card_bg_color, @window_bg_color, 0.35);
+  background-color: mix(@card_bg_color, @window_bg_color, 0.35);
+  color: @window_fg_color;
+  border: 1px solid @borders;
+  border-radius: 8px;
+}
+
+button:hover,
+entry:focus,
+spinbutton:focus,
+searchentry:focus {
+  background-color: @card_bg_color;
+  border-color: alpha(@accent_bg_color, 0.75);
+}
+
+button:disabled,
+entry:disabled,
+label:disabled {
+  background-color: mix(@window_bg_color, @window_fg_color, 0.08);
+  color: alpha(@window_fg_color, 0.55);
+}
+
+
+== gsettings interface ==
+'adw-gtk3-dark'
+'prefer-dark'
+'klassy-dark'
+'breeze_cursors'

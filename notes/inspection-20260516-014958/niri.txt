@@ -1,0 +1,104 @@
+== niri config ==
+/home/npittas/.config/niri/config.kdl
+/home/npittas/.config/niri/config.kdl.backup1778284755
+/home/npittas/.config/niri/config.kdl.backup1778284847
+/home/npittas/.config/niri/config.kdl.backup1778285596
+/home/npittas/.config/niri/config.kdl.dmsbackup1778285271
+/home/npittas/.config/niri/dms/alttab.kdl
+/home/npittas/.config/niri/dms/binds.kdl
+/home/npittas/.config/niri/dms/colors.kdl
+/home/npittas/.config/niri/dms/cursor.kdl
+/home/npittas/.config/niri/dms/layout.kdl
+/home/npittas/.config/niri/dms/outputs.kdl
+/home/npittas/.config/niri/dms/windowrules.kdl
+/home/npittas/.config/niri/dms/wpblur.kdl
+
+== niri validate ==
+[2m2026-05-15T22:50:13.688652Z[0m [34mDEBUG[0m [2mniri_config[0m[2m:[0m loaded config from "/home/npittas/.config/niri/config.kdl"
+[2m2026-05-15T22:50:13.688677Z[0m [32m INFO[0m [2mniri[0m[2m:[0m config is valid
+
+== niri outputs/windows/workspaces ==
+Output "Samsung Electric Company Q70A 0x01000E00" (HDMI-A-1)
+  Current mode: 3840x2160 @ 60.000 Hz (preferred)
+  Variable refresh rate: supported, disabled
+  Physical size: 1210x680 mm
+  Logical position: 0, 0
+  Logical size: 1920x1080
+  Scale: 2
+  Transform: normal
+  Available modes:
+    3840x2160@60.000 (current, preferred)
+    4096x2160@119.880
+    4096x2160@100.000
+    4096x2160@59.940
+    4096x2160@50.000
+    4096x2160@29.970
+    4096x2160@24.000
+    4096x2160@23.976
+    3840x2160@119.880
+    3840x2160@100.000
+    3840x2160@59.940
+    3840x2160@50.000
+    3840x2160@29.970
+    3840x2160@25.000
+    3840x2160@23.976
+    2560x1440@119.998
+    2560x1080@119.881
+    2560x1080@59.939
+    1920x1080@119.879
+    1920x1080@100.000
+    1920x1080@60.000
+    1920x1080@59.939
+    1920x1080@50.000
+    1920x1080@29.972
+    1920x1080@25.000
+    1920x1080@23.977
+    1680x1050@59.954
+    1600x900@60.000
+    1280x1024@75.025
+    1280x1024@60.020
+    1440x900@59.887
+    1280x800@59.810
+    1152x864@75.000
+    1280x720@60.000
+    1280x720@59.943
+    1280x720@50.000
+    1024x768@75.029
+    1024x768@70.069
+    1024x768@60.004
+    800x600@75.000
+    800x600@72.188
+    800x600@60.317
+    720x576@50.000
+    720x480@59.940
+    640x480@75.000
+    640x480@72.809
+    640x480@59.940
+
+Output "HDMI-A-1":
+ * 1
+   2
+Window ID 334: (focused)
+  Title: "pi - npittas:running..."
+  App ID: "com.mitchellh.ghostty"
+  Is floating: no
+  PID: 2061640
+  Workspace ID: 16
+  Layout:
+    Tile size: 1920 x 974
+    Scrolling position: column 1, tile 1
+    Window size: 1920 x 974
+    Window offset in tile: 0 x 0
+
+Window ID 335:
+  Title: "dms-kde-workstation — phase-1-stabilize-current-system.md"
+  App ID: "dev.zed.Zed"
+  Is floating: no
+  PID: 2334927
+  Workspace ID: 16
+  Layout:
+    Tile size: 954 x 966
+    Scrolling position: column 2, tile 1
+    Window size: 954 x 966
+    Window offset in tile: 0 x 0
+

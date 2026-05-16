@@ -1,0 +1,2 @@
+  INFO  go: Sent SIGUSR1 to DMS process with PID 2873150
+  INFO  go: Sent SIGUSR1 to DMS process with PID 2873137

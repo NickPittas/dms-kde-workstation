@@ -1,0 +1,11 @@
+Package             Arch   Version         Repository      Size
+Removing:
+ gnome-disk-utility x86_64 0:46.1-4.fc44   fedora       6.7 MiB
+Removing unused dependencies:
+ libhandy           x86_64 0:1.8.3-10.fc44 fedora       1.4 MiB
+
+Transaction Summary:
+ Removing:           2 packages
+
+After this operation, 8 MiB will be freed (install 0 B, remove 8 MiB).
+Operation aborted by the user.

@@ -1,0 +1,22 @@
+Updating and loading repositories:
+Repositories loaded.
+Package    Arch   Version       Repository                                                   Size
+Installing:
+ qt5ct     x86_64 0:1.9-8.fc44  fedora                                                  952.3 KiB
+ qt6ct-kde x86_64 0:0.11-9.fc44 coprdep:copr.fedorainfracloud.org:avengemedia:danklinux 726.7 KiB
+
+Transaction Summary:
+ Installing:         2 packages
+
+Total size of inbound packages is 467 KiB. Need to download 467 KiB.
+After this operation, 2 MiB extra will be used (install 2 MiB, remove 0 B).
+[1/2] qt5ct-0:1.9-8.fc44.x86_64         100% |   3.3 MiB/s | 269.0 KiB |  00m00s
+[2/2] qt6ct-kde-0:0.11-9.fc44.x86_64    100% | 118.1 KiB/s | 198.2 KiB |  00m02s
+--------------------------------------------------------------------------------
+[2/2] Total                             100% | 206.4 KiB/s | 467.1 KiB |  00m02s
+Running transaction
+[1/4] Verify package files              100% |   2.0 KiB/s |   2.0   B |  00m00s
+[2/4] Prepare transaction               100% |   6.0   B/s |   2.0   B |  00m00s
+[3/4] Installing qt5ct-0:1.9-8.fc44.x86 100% |  32.4 MiB/s | 962.6 KiB |  00m00s
+[4/4] Installing qt6ct-kde-0:0.11-9.fc4 100% |   1.1 MiB/s | 731.5 KiB |  00m01s
+Complete!

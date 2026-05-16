@@ -1,0 +1,117 @@
+== nuke desktop entries ==
+---/home/npittas/.local/share/applications/NukeX 17.desktop
+Exec=ghostty -e env QT_QPA_PLATFORM=xcb LC_NUMERIC=C /opt/Nuke17.0v1/Nuke17.0 --nukex
+Icon=/opt/Nuke17.0v1/plugins/icons/NukeXApp48.png
+Name=NukeX 17.0v1
+---/home/npittas/.local/share/applications/NukeX 17-3.desktop
+Exec=ghostty -e env QT_QPA_PLATFORM=xcb LC_NUMERIC=C /opt/Nuke17.0v1/Nuke17.0 --studio
+Icon=/opt/Nuke17.0v1/plugins/icons/NukeStudioApp48.png
+Name=NukeStudio 17.0v1
+---/home/npittas/.local/share/applications/NukeX 17-2.desktop
+Exec=ghostty -e env QT_QPA_PLATFORM=xcb LC_NUMERIC=C /opt/Nuke17.0v1/Nuke17.0 --hiero
+Icon=/opt/Nuke17.0v1/plugins/icons/HieroApp64.png
+Name=Hiero 17.0v1
+== nuke processes ==
+rlm         2268    2148  0 May10 ?        00:00:00 /opt/rlm/rlm -g foundry foundry.set -s 5 -p "/opt/rlm"
+npittas  3012985 3012981  0 02:10 ?        00:00:00 tee /home/npittas/dms-kde-workstation/notes/dnd-fixes-20260516-021051/nuke-inspection.txt
+== nuke paths ==
+/opt/rlm/foundry.lic
+/opt/rlm/foundry.set
+/opt/Nuke17.0v1
+/opt/Nuke17.0v1/libfoundryboost_prg_exec_monitor.so
+/opt/Nuke17.0v1/libIlmThread_Foundry_3_3.so.32.3.3.6
+/opt/Nuke17.0v1/libMaterialXGenMsl_foundry.so.1.39.3
+/opt/Nuke17.0v1/libIlmThread_Foundry_3_3.so
+/opt/Nuke17.0v1/libfoundryboost_timer.so
+/opt/Nuke17.0v1/libfoundryboost_math_tr1.so.1.85.0
+/opt/Nuke17.0v1/libfoundryboost_system.so
+/opt/Nuke17.0v1/libfoundryboost_log_setup.so.1.85.0
+/opt/Nuke17.0v1/libOpenEXRCore_Foundry_3_3.so.32
+/opt/Nuke17.0v1/libfoundryboost_math_c99f.so.1.85.0
+/opt/Nuke17.0v1/libOpenEXRCore_Foundry_3_3.so.32.3.3.6
+/opt/Nuke17.0v1/libfoundryboost_random.so.1.85.0
+/opt/Nuke17.0v1/libMaterialXGenMsl_foundry.so.1
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeStudioNCSplashScreen@2x.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeStudioSplashScreen.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeXNCSplashScreen.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeStudioIndividualSplashScreen.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeNCSplashScreen.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeStudioSplashScreen@2x.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeXNCSplashScreen@2x.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeStudioIndividualSplashScreen@2x.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeXSplashScreen@2x.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeNCSplashScreen@2x.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeStudioNCSplashScreen.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeSplashScreen@2x.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeSplashScreen.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeAssistSplashScreen@2x.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeXSplashScreen.png
+/opt/Nuke17.0v1/Resources/SplashScreens/NukeAssistSplashScreen.png
+/opt/Nuke17.0v1/libfoundryboost_iostreams.so.1.85.0
+/opt/Nuke17.0v1/libIex_Foundry_3_3.so.32.3.3.6
+/opt/Nuke17.0v1/libfoundryboost_type_erasure.so.1.85.0
+/opt/Nuke17.0v1/libfoundryboost_stacktrace_basic.so
+/opt/Nuke17.0v1/libMaterialXRenderGlsl_foundry.so.1.39.3
+/opt/Nuke17.0v1/libOpenImageIO_Util_Foundry.so.2.5
+/opt/Nuke17.0v1/libfoundryboost_stacktrace_noop.so.1.85.0
+/opt/Nuke17.0v1/libfoundryboost_coroutine.so.1.85.0
+/opt/Nuke17.0v1/libfoundryboost_date_time.so
+/opt/Nuke17.0v1/libfoundryboost_wserialization.so.1.85.0
+/opt/Nuke17.0v1/libfoundryboost_math_c99.so.1.85.0
+/opt/Nuke17.0v1/libfoundryboost_serialization.so.1.85.0
+/opt/Nuke17.0v1/libfoundryboost_context.so
+/opt/Nuke17.0v1/libMaterialXFormat_foundry.so.1
+/opt/Nuke17.0v1/Documentation/PythonDevGuide/Nuke
+/opt/Nuke17.0v1/Documentation/NDKExamples/foundry.css
+/opt/Nuke17.0v1/Documentation/FnUsdAbstractionLib/structusg_1_1_foundry_tokens_def.html
+/opt/Nuke17.0v1/Documentation/FnUsdAbstractionLib/structusg_1_1_foundry_tokens_def-members.html
+/opt/Nuke17.0v1/Documentation/img/nuke.png
+/opt/Nuke17.0v1/libMaterialXGenOsl_foundry.so.1.39.3
+/opt/Nuke17.0v1/libOpenImageIO_Foundry.so
+/opt/Nuke17.0v1/libOpenEXR_Foundry_3_3.so
+/opt/Nuke17.0v1/libMaterialXGenGlsl_foundry.so.1
+/opt/Nuke17.0v1/libOpenImageIO_Foundry.so.2.5
+/opt/Nuke17.0v1/libfoundryboost_date_time.so.1.85.0
+/opt/Nuke17.0v1/libfoundryboost_nowide.so.1.85.0
+/opt/Nuke17.0v1/libfoundryboost_context.so.1.85.0
+/opt/Nuke17.0v1/nukeCrashFeedback
+/opt/Nuke17.0v1/libOpenImageIO_Util_Foundry.so.2.5.7
+/opt/Nuke17.0v1/libfoundryboost_stacktrace_basic.so.1.85.0
+/opt/Nuke17.0v1/libfoundryboost_regex.so.1.85.0
+/opt/Nuke17.0v1/libMaterialXRender_foundry.so.1.39.3
+/opt/Nuke17.0v1/libOpenColorIOFoundry.so.2.4.2
+/opt/Nuke17.0v1/libfoundryboost_thread.so.1.85.0
+/opt/Nuke17.0v1/libfoundryboost_system.so.1.85.0
+/opt/Nuke17.0v1/libfoundryboost_coroutine.so
+/opt/Nuke17.0v1/libfoundryboost_stacktrace_addr2line.so
+/opt/Nuke17.0v1/libOpenEXR_Foundry_3_3.so.32
+/opt/Nuke17.0v1/libfoundryboost_filesystem.so.1.85.0
+/opt/Nuke17.0v1/libfoundryboost_python311.so.1.85.0
+/opt/Nuke17.0v1/libOpenEXRUtil_Foundry_3_3.so.32
+/opt/Nuke17.0v1/libMaterialXGenMdl_foundry.so.1
+/opt/Nuke17.0v1/libfoundryboost_math_tr1f.so.1.85.0
+/opt/Nuke17.0v1/libfoundryboost_json.so
+/opt/Nuke17.0v1/libfoundryboost_chrono.so.1.85.0
+/opt/Nuke17.0v1/libMaterialXRenderHw_foundry.so.1
+/opt/Nuke17.0v1/libMaterialXGenGlsl_foundry.so
+/opt/Nuke17.0v1/libfoundryboost_prg_exec_monitor.so.1.85.0
+/opt/Nuke17.0v1/libNukeStudio.so
+/opt/Nuke17.0v1/include/OFX/nukeOfxCamera.h
+/opt/Nuke17.0v1/include/OFX/nukeOfxGlobalSettings.h
+/opt/Nuke17.0v1/include/DDImage/NukePreferences.h
+/opt/Nuke17.0v1/include/DDImage/NukeWrapper.h
+/opt/Nuke17.0v1/include/usg/foundry
+/opt/Nuke17.0v1/include/ndk/nuke
+/opt/Nuke17.0v1/libfoundryboost_math_c99.so
+/opt/Nuke17.0v1/libOpenEXRUtil_Foundry_3_3.so
+/opt/Nuke17.0v1/libfoundryboost_program_options.so
+/opt/Nuke17.0v1/libOpenImageIO_Util_Foundry.so
+/opt/Nuke17.0v1/libMaterialXCore_foundry.so.1.39.3
+/opt/Nuke17.0v1/libfoundryboost_stacktrace_noop.so
+/opt/Nuke17.0v1/libfoundryboost_url.so
+/opt/Nuke17.0v1/libfoundryboost_url.so.1.85.0
+/opt/Nuke17.0v1/libMaterialXGenOsl_foundry.so
+/opt/Nuke17.0v1/libfoundryboost_filesystem.so
+/opt/Nuke17.0v1/configs/Workspaces/Nuke
+/opt/Nuke17.0v1/configs/Workspaces/NukeNC
+/opt/Nuke17.0v1/configs/Workspaces/NukeStudio

@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+import os
+import subprocess
+import sys
+import time
+
+import dbus
+import dbus.service
+import dbus.mainloop.glib
+from gi.repository import GLib
+
+SERVICES = [
+    ("Dropbox", "dropbox.service"),
+    ("Sunshine", "app-dev.lizardbyte.app.Sunshine.service"),
+    ("Vicinae", "vicinae.service"),
+    ("Portal", "xdg-desktop-portal.service"),
+]
+
+
+def is_active(unit):
+    return subprocess.run(["systemctl", "--user", "is-active", "--quiet", unit]).returncode == 0
+
+
+def status_text():
+    parts = []
+    for label, unit in SERVICES:
+        parts.append(f"{label}:{'on' if is_active(unit) else 'off'}")
+    return "  ".join(parts)
+
+
+class ServiceIndicator(dbus.service.Object):
+    IFACE = "org.kde.StatusNotifierItem"
+    PROP_IFACE = "org.freedesktop.DBus.Properties"
+
+    def __init__(self, bus, path):
+        super().__init__(bus, path)
+        self.path = path
+        self._status = "Active"
+        GLib.timeout_add_seconds(5, self.refresh)
+
+    def refresh(self):
+        self.PropertiesChanged(self.IFACE, {
+            "ToolTip": self.get_tooltip(),
+            "IconName": self.get_icon_name(),
+            "Title": self.get_title(),
+        }, [])
+        return True
+
+    def get_title(self):
+        return "Workstation Services"
+
+    def get_icon_name(self):
+        # Use common icon names available in Breeze/hicolor themes.
+        if all(is_active(unit) for _, unit in SERVICES[:3]):
+            return "emblem-ok-symbolic"
+        return "dialog-warning-symbolic"
+
+    def get_tooltip(self):
+        # SNI tooltip signature: (sa(iiay)ss)
+        return dbus.Struct(("", dbus.Array([], signature="(iiay)"), "Workstation Services", status_text()), signature="sa(iiay)ss")
+
+    def props(self):
+        return {
+            "Category": "SystemServices",
+            "Id": "dms-workstation-services",
+            "Title": self.get_title(),
+            "Status": self._status,
+            "WindowId": dbus.UInt32(0),
+            "IconName": self.get_icon_name(),
+            "IconPixmap": dbus.Array([], signature="(iiay)"),
+            "OverlayIconName": "",
+            "OverlayIconPixmap": dbus.Array([], signature="(iiay)"),
+            "AttentionIconName": "dialog-warning-symbolic",
+            "AttentionIconPixmap": dbus.Array([], signature="(iiay)"),
+            "AttentionMovieName": "",
+            "ToolTip": self.get_tooltip(),
+            "ItemIsMenu": False,
+            "Menu": dbus.ObjectPath("/NO_DBUSMENU"),
+        }
+
+    @dbus.service.method(PROP_IFACE, in_signature="ss", out_signature="v")
+    def Get(self, interface, prop):
+        return self.props()[prop]
+
+    @dbus.service.method(PROP_IFACE, in_signature="s", out_signature="a{sv}")
+    def GetAll(self, interface):
+        return self.props()
+
+    @dbus.service.method(PROP_IFACE, in_signature="ssv", out_signature="")
+    def Set(self, interface, prop, value):
+        return
+
+    @dbus.service.signal(PROP_IFACE, signature="sa{sv}as")
+    def PropertiesChanged(self, interface, changed, invalidated):
+        pass
+
+    @dbus.service.method(IFACE, in_signature="ii", out_signature="")
+    def Activate(self, x, y):
+        subprocess.Popen([os.path.expanduser("~/.local/bin/mango-workstation-menu")])
+
+    @dbus.service.method(IFACE, in_signature="ii", out_signature="")
+    def ContextMenu(self, x, y):
+        subprocess.Popen(["ghostty", "-e", "bash", "-lc", "systemctl --user status dropbox.service app-dev.lizardbyte.app.Sunshine.service vicinae.service xdg-desktop-portal.service; read -p 'Press Enter...'"])
+
+    @dbus.service.method(IFACE, in_signature="ii", out_signature="")
+    def SecondaryActivate(self, x, y):
+        self.ContextMenu(x, y)
+
+    @dbus.service.method(IFACE, in_signature="is", out_signature="")
+    def Scroll(self, delta, orientation):
+        pass
+
+
+def main():
+    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+    bus = dbus.SessionBus()
+    pid = os.getpid()
+    name = f"org.kde.StatusNotifierItem-{pid}-1"
+    path = "/StatusNotifierItem"
+    bus_name = dbus.service.BusName(name, bus)
+    item = ServiceIndicator(bus, path)
+
+    watcher = bus.get_object("org.kde.StatusNotifierWatcher", "/StatusNotifierWatcher")
+    watcher_iface = dbus.Interface(watcher, "org.kde.StatusNotifierWatcher")
+    watcher_iface.RegisterStatusNotifierItem(name)
+
+    GLib.MainLoop().run()
+
+
+if __name__ == "__main__":
+    main()

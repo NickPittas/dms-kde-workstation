@@ -1,0 +1,13 @@
+Removing failed Nuke/XWayland DnD helper launchers only
+removed '/home/npittas/.local/bin/dolphin-xwayland-for-nuke'
+removed '/home/npittas/.local/bin/nukex17-direct'
+removed '/home/npittas/.local/bin/nukestudio17-direct'
+removed '/home/npittas/.local/bin/hiero17-direct'
+removed '/home/npittas/.local/share/applications/org.kde.dolphin-xwayland-for-nuke.desktop'
+removed '/home/npittas/.local/share/applications/NukeX-17-direct.desktop'
+removed '/home/npittas/.local/share/applications/NukeStudio-17-direct.desktop'
+removed '/home/npittas/.local/share/applications/Hiero-17-direct.desktop'
+Remaining nuke desktop entries:
+/home/npittas/.local/share/applications/NukeX 17-2.desktop
+/home/npittas/.local/share/applications/NukeX 17-3.desktop
+/home/npittas/.local/share/applications/NukeX 17.desktop

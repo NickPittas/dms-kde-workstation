@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+base="$HOME/dms-kde-workstation/notes/niri-env-qtct-20260516-023029"
+[ -d "$base" ] || { echo "Missing $base" >&2; exit 1; }
+cp "$HOME/.config/niri/config.kdl" "$HOME/.config/niri/config.kdl.before-niri-env-restore-$(date +%Y%m%d-%H%M%S)"
+cp "$base/config.kdl.before" "$HOME/.config/niri/config.kdl"
+niri validate -c "$HOME/.config/niri/config.kdl"
+niri msg action load-config-file || true
+echo "Restored niri env qtct experiment 20260516-023029"

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if ! command -v grim >/dev/null || ! command -v swappy >/dev/null; then
+  notify-send "Screenshot tools missing" "Need grim and swappy" 2>/dev/null || true
+  exit 1
+fi
+grim - | swappy -f -

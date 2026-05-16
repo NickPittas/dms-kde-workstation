@@ -1,0 +1,30 @@
+== created UI ==
+-rwxr-xr-x 1 npittas npittas 1305 May 16 03:35 /home/npittas/.local/bin/mango-workstation-menu
+-rw-r--r-- 1 npittas npittas  294 May 16 03:35 /home/npittas/.local/share/applications/mango-workstation-menu.desktop
+== autostart config ==
+90:# DMS KDE Workstation autostart parity with niri/KDE
+91-exec-once=systemctl --user start dropbox.service
+92-exec-once=systemctl --user start app-dev.lizardbyte.app.Sunshine.service
+93-exec-once=systemctl --user start vicinae.service
+94-exec-once=systemctl --user start xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service
+95-
+96-# Misc
+97-no_border_when_single=1
+98-axis_bind_apply_timeout=100
+== mouse/scroller config ==
+325:# DMS KDE Workstation Mango mouse/scroller controls
+326-# Use Super so normal app scrolling remains untouched.
+327-axisbind=SUPER,UP,focusstack,prev
+328-axisbind=SUPER,DOWN,focusstack,next
+329-axisbind=SUPER,LEFT,focusdir,left
+330-axisbind=SUPER,RIGHT,focusdir,right
+331-mousebind=SUPER,btn_side,focusstack,prev
+332-mousebind=SUPER,btn_extra,focusstack,next
+333-bind=SUPER+SHIFT,l,spawn,/home/npittas/.local/bin/mango-workstation-menu
+== service status ==
+app-dev.lizardbyte.app.Sunshine.service        loaded active running Self-hosted game stream host for Moonlight
+dropbox.service                                loaded active running Dropbox daemon
+vicinae.service                                loaded active running Vicinae Launcher Daemon
+xdg-desktop-portal-gtk.service                 loaded active running Portal service (GTK/GNOME implementation)
+xdg-desktop-portal-wlr.service                 loaded active running Portal service (wlroots implementation)
+xdg-document-portal.service                    loaded active running flatpak document portal service

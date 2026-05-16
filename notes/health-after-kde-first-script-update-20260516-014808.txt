@@ -1,0 +1,62 @@
+
+== Session ==
+XDG_SESSION_TYPE=wayland
+XDG_CURRENT_DESKTOP=niri
+WAYLAND_DISPLAY=wayland-1
+
+== Core commands ==
+OK   niri present: /usr/bin/niri
+OK   dms present: /usr/bin/dms
+OK   quickshell present: /usr/bin/quickshell
+OK   xwayland-satellite present: /usr/bin/xwayland-satellite
+
+== Portal services ==
+OK   xdg-desktop-portal.service active
+WARN xdg-desktop-portal-kde.service not active
+WARN xdg-desktop-portal-wlr.service not active
+OK   xdg-desktop-portal-gtk.service active
+
+== Portal config candidates ==
+OK   /home/npittas/.config/xdg-desktop-portal/niri-portals.conf exists
+WARN /home/npittas/.config/xdg-desktop-portal/portals.conf missing
+
+== KDE/Qt workstation apps ==
+OK   dolphin
+OK   kate
+OK   okular
+OK   gwenview
+OK   ark
+OK   kcalc
+OK   filelight
+OK   partitionmanager
+OK   plasma-discover
+OK   spectacle
+OK   kwalletmanager
+
+== Admin/helper apps ==
+OK   nm-connection-editor
+OK   blueman-manager
+OK   pavucontrol
+OK   qpwgraph
+OK   firewall-config
+OK   system-config-printer
+OK   fuzzel
+OK   wl-copy
+OK   grim
+OK   slurp
+OK   swappy
+OK   wf-recorder
+OK   flatseal
+
+== Agents/services ==
+WARN polkit auth agent not detected by process/bus scan; test with an admin GUI before changing this
+OK   keyring/wallet appears running
+
+== Flatpak ==
+OK   flatpak present
+Flatpak 1.17.7
+
+== NVIDIA ==
+NVIDIA GeForce RTX 4090, 595.71.05
+
+== Done ==

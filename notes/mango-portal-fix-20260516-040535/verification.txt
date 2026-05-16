@@ -1,0 +1,87 @@
+== service after ==
+○ xdg-desktop-portal.service - Portal service
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal.service; static)
+    Drop-In: /home/npittas/.config/systemd/user/xdg-desktop-portal.service.d
+             └─10-mango-no-graphical-requisite.conf
+             /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: inactive (dead) since Sat 2026-05-16 03:16:25 EEST; 49min ago
+   Duration: 44min 30.535s
+ Invocation: 45eff5e8b2ba40cbaffc37cbce8c49ed
+   Main PID: 3452472 (code=killed, signal=TERM)
+   Mem peak: 7.6M
+        CPU: 182ms
+
+May 16 04:00:47 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 04:00:47 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+May 16 04:00:48 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 04:00:48 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+May 16 04:00:48 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 04:00:48 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+May 16 04:00:48 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 04:00:48 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+May 16 04:05:35 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 04:05:35 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+
+● xdg-desktop-portal-wlr.service - Portal service (wlroots implementation)
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal-wlr.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: active (running) since Sat 2026-05-16 04:05:35 EEST; 2s ago
+ Invocation: 8084b706243d457688c51474c192f758
+   Main PID: 1350420 (xdg-desktop-por)
+      Tasks: 2 (limit: 154119)
+     Memory: 1.2M (peak: 1.3M)
+        CPU: 3ms
+     CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/xdg-desktop-portal-wlr.service
+             └─1350420 /usr/libexec/xdg-desktop-portal-wlr
+
+May 16 04:05:35 fedora systemd[2660]: Starting xdg-desktop-portal-wlr.service - Portal service (wlroots implementation)...
+May 16 04:05:35 fedora systemd[2660]: Started xdg-desktop-portal-wlr.service - Portal service (wlroots implementation).
+
+● xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation)
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal-gtk.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: active (running) since Sat 2026-05-16 04:05:35 EEST; 2s ago
+ Invocation: b42ad78c20954add8ee7c7def9708863
+   Main PID: 1350422 (xdg-desktop-por)
+      Tasks: 7 (limit: 154119)
+     Memory: 10.1M (peak: 10.3M)
+        CPU: 41ms
+     CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/xdg-desktop-portal-gtk.service
+             └─1350422 /usr/libexec/xdg-desktop-portal-gtk
+
+May 16 04:05:35 fedora systemd[2660]: Starting xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation)...
+May 16 04:05:35 fedora systemd[2660]: Started xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation).
+== bus portal ==
+org.freedesktop.impl.portal.PermissionStore                                   234372 xdg-permission- npittas :1.8983       user@1000.service  -       -
+org.freedesktop.impl.portal.Secret                                                 - -               -       (activatable) -                  -       -
+org.freedesktop.impl.portal.desktop.gnome                                          - -               -       (activatable) -                  -       -
+org.freedesktop.impl.portal.desktop.gtk                                      1350422 xdg-desktop-por npittas :1.9067       user@1000.service  -       -
+org.freedesktop.impl.portal.desktop.kde                                            - -               -       (activatable) -                  -       -
+org.freedesktop.impl.portal.desktop.kwallet                                        - -               -       (activatable) -                  -       -
+org.freedesktop.impl.portal.desktop.wlr                                      1350420 xdg-desktop-por npittas :1.9065       user@1000.service  -       -
+org.freedesktop.portal.Desktop                                                     - -               -       (activatable) -                  -       -
+org.freedesktop.portal.Documents                                              234357 xdg-document-po npittas :1.8982       user@1000.service  -       -
+org.freedesktop.portal.Flatpak                                                     - -               -       (activatable) -                  -       -
+org.freedesktop.portal.IBus                                                        - -               -       (activatable) -                  -       -
+org.freedesktop.portal.Tracker                                                     - -               -       (activatable) -                  -       -
+== env ==
+DESKTOP_SESSION=mango
+DISPLAY=:1
+WAYLAND_DISPLAY=wayland-0
+XDG_CURRENT_DESKTOP=mango
+XDG_SESSION_DESKTOP=mango:wlroots
+== config ==
+[preferred]
+# Mango/DMS KDE Workstation: wlr for capture, KDE for KDE UX where possible, GTK fallback.
+default=kde;gtk;
+org.freedesktop.impl.portal.FileChooser=kde;gtk;
+org.freedesktop.impl.portal.OpenURI=kde;gtk;
+org.freedesktop.impl.portal.Secret=kwallet;
+org.freedesktop.impl.portal.ScreenCast=wlr;
+org.freedesktop.impl.portal.Screenshot=wlr;
+org.freedesktop.impl.portal.Access=gtk;
+org.freedesktop.impl.portal.Notification=gtk;
+org.freedesktop.impl.portal.Settings=kde;gtk;

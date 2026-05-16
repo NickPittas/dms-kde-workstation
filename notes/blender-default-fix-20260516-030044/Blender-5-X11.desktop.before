@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Blender 5 (X11 / DnD Test)
+Comment=Run Blender through XWayland to test drag-and-drop behavior
+Exec=/home/npittas/.local/bin/blender5-x11 %F
+Icon=/home/npittas/blender-5.0.1-linux-x64/blender.svg
+Type=Application
+Categories=Graphics;3DGraphics;
+MimeType=application/x-blender;model/obj;image/png;image/jpeg;image/tiff;image/webp;
+StartupNotify=true

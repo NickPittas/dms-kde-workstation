@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+stamp="20260516-015511"
+backup="$HOME/dms-kde-workstation/configs/xdg-desktop-portal/niri-portals.conf.backup-$stamp"
+target="$HOME/.config/xdg-desktop-portal/niri-portals.conf"
+if [ ! -f "$backup" ]; then
+  echo "Backup not found: $backup" >&2
+  exit 1
+fi
+cp "$target" "$target.before-restore-$(date +%Y%m%d-%H%M%S)"
+cp "$backup" "$target"
+systemctl --user restart xdg-desktop-portal.service xdg-desktop-portal-gtk.service xdg-desktop-portal-gnome.service xdg-desktop-portal-wlr.service || true
+echo "Restored portal config from $backup"

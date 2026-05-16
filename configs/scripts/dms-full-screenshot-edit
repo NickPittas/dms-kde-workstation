@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if ! command -v grim >/dev/null || ! command -v swappy >/dev/null; then
+  notify-send "Screenshot tools missing" "Need grim and swappy" 2>/dev/null || true
+  exit 1
+fi
+tmp="$(mktemp --suffix=.png /tmp/dms-full-screenshot-XXXXXX)"
+trap 'rm -f "$tmp"' EXIT
+grim "$tmp"
+env GTK_THEME=catppuccin-macchiato-blue-standard+default swappy -f "$tmp"

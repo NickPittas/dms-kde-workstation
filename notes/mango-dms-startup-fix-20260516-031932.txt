@@ -1,0 +1,61 @@
+== updated mango dms startup ==
+85:# DMS KDE Workstation Mango evaluation startup/environment
+88:exec-once=dms run
+282:# DMS KDE Workstation app binds
+== portal status ==
+○ xdg-desktop-portal.service - Portal service
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: inactive (dead) since Sat 2026-05-16 03:16:25 EEST; 3min 7s ago
+   Duration: 44min 30.535s
+ Invocation: 45eff5e8b2ba40cbaffc37cbce8c49ed
+    Process: 3452472 ExecStart=/usr/libexec/xdg-desktop-portal (code=killed, signal=TERM)
+   Main PID: 3452472 (code=killed, signal=TERM)
+   Mem peak: 7.6M
+        CPU: 182ms
+
+May 16 03:19:06 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 03:19:06 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+May 16 03:19:06 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 03:19:06 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+May 16 03:19:18 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 03:19:18 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+May 16 03:19:18 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 03:19:18 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+May 16 03:19:19 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 03:19:19 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+
+○ xdg-desktop-portal-wlr.service - Portal service (wlroots implementation)
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal-wlr.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: inactive (dead)
+
+May 16 01:55:11 fedora systemd[2660]: Starting xdg-desktop-portal-wlr.service - Portal service (wlroots implementation)...
+May 16 01:55:11 fedora systemd[2660]: Started xdg-desktop-portal-wlr.service - Portal service (wlroots implementation).
+May 16 02:31:55 fedora systemd[2660]: Starting xdg-desktop-portal-wlr.service - Portal service (wlroots implementation)...
+May 16 02:31:55 fedora systemd[2660]: Started xdg-desktop-portal-wlr.service - Portal service (wlroots implementation).
+
+× xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation)
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal-gtk.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: failed (Result: exit-code) since Sat 2026-05-16 03:16:25 EEST; 3min 7s ago
+   Duration: 44min 30.512s
+ Invocation: d88f26b054424092a8afac37097c0895
+    Process: 3452782 ExecStart=/usr/libexec/xdg-desktop-portal-gtk (code=exited, status=1/FAILURE)
+   Main PID: 3452782 (code=exited, status=1/FAILURE)
+   Mem peak: 13.6M
+        CPU: 240ms
+
+May 16 02:31:55 fedora systemd[2660]: Starting xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation)...
+May 16 02:31:55 fedora systemd[2660]: Started xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation).
+May 16 03:16:25 fedora xdg-desktop-portal-gtk[3452782]: Error reading events from display: Broken pipe
+May 16 03:16:25 fedora systemd[2660]: xdg-desktop-portal-gtk.service: Main process exited, code=exited, status=1/FAILURE
+May 16 03:16:25 fedora systemd[2660]: xdg-desktop-portal-gtk.service: Failed with result 'exit-code'.
+== dms procs ==
+278422 dms run
+278439 qs -p /usr/share/quickshell/dms
+284358 /bin/bash -c python3 - <<'PY' from pathlib import Path p=Path('/home/npittas/.config/mango/config.conf') s=p.read_text() s=s.replace('exec-once=systemctl --user start dms.service', 'exec-once=dms run') p.write_text(s) PY { echo '== updated mango dms startup =='; grep -n -E 'exec-once=.*dms|DMS KDE' ~/.config/mango/config.conf; echo '== portal status =='; systemctl --user status xdg-desktop-portal.service xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service --no-pager 2>&1 || true; echo '== dms procs =='; pgrep -af 'dms run|qs -p|quickshell' | head -20; } | tee /home/npittas/dms-kde-workstation/notes/mango-dms-startup-fix-$(date +%Y%m%d-%H%M%S).txt
+284360 /bin/bash -c python3 - <<'PY' from pathlib import Path p=Path('/home/npittas/.config/mango/config.conf') s=p.read_text() s=s.replace('exec-once=systemctl --user start dms.service', 'exec-once=dms run') p.write_text(s) PY { echo '== updated mango dms startup =='; grep -n -E 'exec-once=.*dms|DMS KDE' ~/.config/mango/config.conf; echo '== portal status =='; systemctl --user status xdg-desktop-portal.service xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service --no-pager 2>&1 || true; echo '== dms procs =='; pgrep -af 'dms run|qs -p|quickshell' | head -20; } | tee /home/npittas/dms-kde-workstation/notes/mango-dms-startup-fix-$(date +%Y%m%d-%H%M%S).txt

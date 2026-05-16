@@ -1,0 +1,40 @@
+mmsg - MangoWM IPC
+
+SYNOPSIS:
+	mmsg [-OTLq]
+	mmsg [-o <output>] -s [-t <tags>] [-l <layout>] [-c <tags>] [-d <cmd>,<arg1>,<arg2>,<arg3>,<arg4>,<arg5>]
+	mmsg [-o <output>] (-g | -w) [-OotlcvmfxekbA]
+
+OPERATION MODES:
+	-g           Get values (tags, layout, focused client)
+	-s           Set values (switch tags, layouts)
+	-w           Watch mode (stream events)
+
+GENERAL OPTIONS:
+	-O           Get all output (monitor) information
+	-T           Get number of tags
+	-L           Get all available layouts
+	-q           Quit mango
+	-o <output>  Select output (monitor)
+
+GET OPTIONS (used with -g or -w):
+	-O           Get output name
+	-o           Get output (monitor) focus information
+	-t           Get selected tags
+	-l           Get current layout
+	-c           Get title and appid of focused clients
+	-v           Get visibility of statusbar
+	-m           Get fullscreen status
+	-f           Get floating status
+	-x           Get focused client geometry
+	-e           Get name of last focused layer
+	-k           Get current keyboard layout
+	-b           Get current keybind mode
+	-A           Get scale factor of monitor
+
+SET OPTIONS (used with -s):
+	-o <output>         Select output (monitor)
+	-t <tags>           Set selected tags (can be used with [+-^.] modifiers)
+	-l <layout>         Set current layout
+	-c <tags>           Get title and appid of focused client
+	-d <cmd>,<args...>  Dispatch internal command (max 5 args)

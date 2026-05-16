@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+stamp="$(cat "$HOME/dms-kde-workstation/notes/.last-mango-portal-unit-override")"
+base="$HOME/dms-kde-workstation/notes/mango-portal-unit-override-$stamp"
+[ -d "$base" ] || { echo "Missing $base" >&2; exit 1; }
+if [ -f "$base/user-unit.before" ]; then
+  cp "$base/user-unit.before" "$HOME/.config/systemd/user/xdg-desktop-portal.service"
+else
+  rm -f "$HOME/.config/systemd/user/xdg-desktop-portal.service"
+fi
+systemctl --user daemon-reload
+systemctl --user restart xdg-desktop-portal.service 2>/dev/null || true
+echo "Restored xdg-desktop-portal user unit override from $stamp"

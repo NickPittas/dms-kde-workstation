@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+stamp="$(cat "$HOME/dms-kde-workstation/notes/.last-blender-default-fix")"
+base="$HOME/dms-kde-workstation/notes/blender-default-fix-$stamp"
+[ -d "$base" ] || { echo "Missing $base" >&2; exit 1; }
+cp "$base/Blender 5.desktop.before" "$HOME/.local/share/applications/Blender 5.desktop"
+if [ -f "$base/mimeapps.before.list" ]; then
+  cp "$base/mimeapps.before.list" "$HOME/.config/mimeapps.list"
+fi
+update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
+echo "Restored Blender default fix $stamp"

@@ -1,0 +1,21 @@
+# Local caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ruff_cache/
+
+# Local runtime / backups / logs
+.local-state/
+*.log
+
+# Optional local upstream checkout
+upstream/
+
+# Local marker/loop artifacts
+.ralph/
+notes/.last-*
+
+# Temporary/editor noise
+.DS_Store
+*~

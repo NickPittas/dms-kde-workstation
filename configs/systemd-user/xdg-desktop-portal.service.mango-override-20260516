@@ -1,0 +1,13 @@
+# DMS KDE Workstation / Mango user override.
+# Fedora's stock user unit requires graphical-session.target, but Mango's session
+# does not currently activate that target. This unit keeps D-Bus activation while
+# removing the graphical-session.target dependency for this user.
+[Unit]
+Description=Portal service (Mango-compatible user override)
+After=dbus.socket
+
+[Service]
+Type=dbus
+BusName=org.freedesktop.portal.Desktop
+ExecStart=/usr/libexec/xdg-desktop-portal
+Slice=session.slice

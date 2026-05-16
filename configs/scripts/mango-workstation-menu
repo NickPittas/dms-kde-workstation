@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONFIG="$HOME/.config/mango/config.conf"
+BACKUP_DIR="$HOME/dms-kde-workstation/notes/mango-config-backups"
+
+notify() { notify-send "Mango Workstation" "$1" 2>/dev/null || true; }
+menu() { printf '%s\n' "$1" | fuzzel --dmenu --prompt="$2" 2>/dev/null || true; }
+
+set_kv() {
+  local key="$1" value="$2"
+  python3 - "$CONFIG" "$key" "$value" <<'PY'
+from pathlib import Path
+import sys, re
+p=Path(sys.argv[1]); key=sys.argv[2]; value=sys.argv[3]
+s=p.read_text()
+pat=re.compile(rf'(?m)^{re.escape(key)}\s*=.*$')
+line=f'{key}={value}'
+if pat.search(s):
+    s=pat.sub(line, s, count=1)
+else:
+    s += '\n' + line + '\n'
+p.write_text(s)
+PY
+}
+
+get_kv() {
+  grep -E "^$1=" "$CONFIG" | tail -1 | cut -d= -f2- || true
+}
+
+toggle_kv() {
+  local key="$1" cur
+  cur="$(get_kv "$key")"
+  if [ "$cur" = "1" ]; then set_kv "$key" 0; notify "$key=0"; else set_kv "$key" 1; notify "$key=1"; fi
+  mmsg -s -d reload_config >/dev/null 2>&1 || true
+}
+
+backup_config() {
+  mkdir -p "$BACKUP_DIR"
+  local out="$BACKUP_DIR/config.conf.$(date +%Y%m%d-%H%M%S)"
+  cp "$CONFIG" "$out"
+  notify "Backup saved: $out"
+}
+
+show_text() {
+  local title="$1" body="$2"
+  if command -v kdialog >/dev/null 2>&1; then
+    kdialog --title "$title" --msgbox "$body" 2>/dev/null || true
+  else
+    notify "$body"
+  fi
+}
+
+layout_menu() {
+  local choice
+  choice=$(menu "Scroller (niri-like)
+Monocle (maximized)
+Tile
+Dwindle
+Grid
+Vertical Scroller
+Current layout" "Layout: ")
+  case "$choice" in
+    'Scroller (niri-like)') mmsg -s -l S; notify "Layout: Scroller" ;;
+    'Monocle (maximized)') mmsg -s -l M; notify "Layout: Monocle" ;;
+    'Tile') mmsg -s -l T; notify "Layout: Tile" ;;
+    'Dwindle') mmsg -s -l DW; notify "Layout: Dwindle" ;;
+    'Grid') mmsg -s -l G; notify "Layout: Grid" ;;
+    'Vertical Scroller') mmsg -s -l VS; notify "Layout: Vertical Scroller" ;;
+    'Current layout') notify "$(mmsg -g -l 2>/dev/null || true)" ;;
+  esac
+}
+
+
+window_menu() {
+  local choice
+  choice=$(menu "Close focused window
+Minimize focused window
+Restore minimized windows
+Toggle maximize
+Toggle fullscreen
+Toggle floating
+Toggle scratchpad
+Current window" "Window: ")
+  case "$choice" in
+    'Close focused window') mmsg -s -d killclient ;;
+    'Minimize focused window') mmsg -s -d minimized ;;
+    'Restore minimized windows') mmsg -s -d restore_minimized ;;
+    'Toggle maximize') mmsg -s -d togglemaximizescreen ;;
+    'Toggle fullscreen') mmsg -s -d togglefullscreen ;;
+    'Toggle floating') mmsg -s -d togglefloating ;;
+    'Toggle scratchpad') mmsg -s -d toggle_scratchpad ;;
+    'Current window') notify "$(mmsg -g -c 2>/dev/null | tr '\n' ' ')" ;;
+  esac
+}
+
+
+keyboard_menu() {
+  local choice
+  choice=$(menu "Switch layout
+Set English (US)
+Set Greek (GR)
+Current layout
+Open Mango config" "Keyboard: ")
+  case "$choice" in
+    'Switch layout') mmsg -s -d switch_keyboard_layout ;;
+    'Set English (US)') mmsg -s -d switch_keyboard_layout,0 ;;
+    'Set Greek (GR)') mmsg -s -d switch_keyboard_layout,1 ;;
+    'Current layout') notify "$(mmsg -g -k 2>/dev/null || true)" ;;
+    'Open Mango config') setsid -f kate "$CONFIG" ;;
+  esac
+}
+
+mouse_menu() {
+  local choice
+  choice=$(menu "Toggle focus follows mouse (sloppyfocus)
+Toggle cursor warp
+Toggle drag tile-to-tile
+Toggle drag small tile
+Show mouse controls" "Mouse: ")
+  case "$choice" in
+    'Toggle focus follows mouse (sloppyfocus)') toggle_kv sloppyfocus ;;
+    'Toggle cursor warp') toggle_kv warpcursor ;;
+    'Toggle drag tile-to-tile') toggle_kv drag_tile_to_tile ;;
+    'Toggle drag small tile') toggle_kv drag_tile_small ;;
+    'Show mouse controls') show_text "Mango Mouse Controls" "Super + wheel: scroller previous/next\nSuper + left drag: move\nSuper + right drag: resize\nMiddle click: maximize\nSuper + side buttons: prev/next if mouse supports them" ;;
+  esac
+}
+
+appearance_menu() {
+  local choice
+  choice=$(menu "Gaps: zero
+Gaps: small
+Gaps: medium
+Toggle gaps
+Toggle blur
+Toggle layer blur
+Toggle shadows
+Toggle no border when single" "Appearance: ")
+  case "$choice" in
+    'Gaps: zero') set_kv gappih 0; set_kv gappiv 0; set_kv gappoh 0; set_kv gappov 0; mmsg -s -d reload_config; notify "Gaps: zero" ;;
+    'Gaps: small') set_kv gappih 5; set_kv gappiv 5; set_kv gappoh 8; set_kv gappov 8; mmsg -s -d reload_config; notify "Gaps: small" ;;
+    'Gaps: medium') set_kv gappih 10; set_kv gappiv 10; set_kv gappoh 16; set_kv gappov 16; mmsg -s -d reload_config; notify "Gaps: medium" ;;
+    'Toggle gaps') mmsg -s -d togglegaps ;;
+    'Toggle blur') toggle_kv blur ;;
+    'Toggle layer blur') toggle_kv blur_layer ;;
+    'Toggle shadows') toggle_kv shadows ;;
+    'Toggle no border when single') toggle_kv no_border_when_single ;;
+  esac
+}
+
+autostart_menu() {
+  local choice
+  choice=$(menu "Start all workstation autostart
+Start DMS
+Start Dropbox
+Start Sunshine
+Start Vicinae
+Start portals
+Status services" "Autostart: ")
+  case "$choice" in
+    'Start all workstation autostart') systemctl --user start dropbox.service app-dev.lizardbyte.app.Sunshine.service vicinae.service xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service 2>/dev/null || true; notify "Started workstation services" ;;
+    'Start DMS') setsid -f dms run; notify "Started DMS" ;;
+    'Start Dropbox') systemctl --user start dropbox.service; notify "Started Dropbox" ;;
+    'Start Sunshine') systemctl --user start app-dev.lizardbyte.app.Sunshine.service; notify "Started Sunshine" ;;
+    'Start Vicinae') systemctl --user start vicinae.service; notify "Started Vicinae" ;;
+    'Start portals') systemctl --user start xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service; notify "Started portals" ;;
+    'Status services') systemctl --user --no-pager --plain list-units --type=service --state=running | grep -Ei 'dms|dropbox|sunshine|vicinae|portal|pipewire|wireplumber' | fuzzel --dmenu --prompt='Services: ' >/dev/null || true ;;
+  esac
+}
+
+status_menu() {
+  local choice
+  choice=$(menu "Current layout
+Current window
+Windows list
+DnD checklist
+DMS doctor" "Status: ")
+  case "$choice" in
+    'Current layout') notify "$(mmsg -g -l 2>/dev/null || true)" ;;
+    'Current window') notify "$(mmsg -g -c 2>/dev/null | tr '\n' ' ')" ;;
+    'Windows list') mmsg -g -c | fuzzel --dmenu --prompt='Windows: ' >/dev/null || true ;;
+    'DnD checklist') show_text "DnD checklist" "Must pass:\nDolphin -> Nuke\nDolphin -> Blender\nDolphin -> Obsidian\nDolphin -> Zed\nDolphin -> Dolphin" ;;
+    'DMS doctor') ghostty -e bash -lc 'dms doctor; read -p "Press Enter..."' ;;
+  esac
+}
+
+config_menu() {
+  local choice
+  choice=$(menu "Open Mango config
+Reload Mango config
+Backup Mango config
+Open project docs" "Config: ")
+  case "$choice" in
+    'Open Mango config') setsid -f kate "$CONFIG" ;;
+    'Reload Mango config') mmsg -s -d reload_config; notify "Mango config reloaded" ;;
+    'Backup Mango config') backup_config ;;
+    'Open project docs') setsid -f dolphin "$HOME/dms-kde-workstation/docs" ;;
+  esac
+}
+
+main() {
+  local choice
+  choice=$(menu "Open GUI Settings
+Layout
+Window
+Keyboard
+Mouse / Navigation
+Appearance
+Autostart
+Status
+Config" "Mango settings: ")
+  case "$choice" in
+    'Open GUI Settings') setsid -f /home/npittas/.local/bin/dms-mango-settings ;;
+    Layout) layout_menu ;;
+    Window) window_menu ;;
+    Keyboard) keyboard_menu ;;
+    'Mouse / Navigation') mouse_menu ;;
+    Appearance) appearance_menu ;;
+    Autostart) autostart_menu ;;
+    Status) status_menu ;;
+    Config) config_menu ;;
+  esac
+}
+
+main "$@"

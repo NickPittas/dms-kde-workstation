@@ -1,0 +1,30 @@
+== active niri bind ==
+5:    Super+E { spawn "gtk-launch" "org.kde.dolphin"; }
+
+== obsidian permissions after ==
+[Context]
+shared=ipc;network;
+sockets=pulseaudio;ssh-auth;wayland;x11;
+devices=dri;
+filesystems=home;/media;xdg-run/gnupg:ro;/mnt;/run/media;~/.local/share/fonts:ro;xdg-run/app/com.discordapp.Discord:create;
+persistent=~/.ssh;
+
+[Session Bus Policy]
+org.freedesktop.secrets=talk
+
+[Environment]
+SSH_ASKPASS=/app/libexec/openssh/ssh-askpass
+OBSIDIAN_ENABLE_AUTOSCROLL=0
+PATH=/usr/bin:/app/bin:/app/texlive/bin:/app/texlive/bin/x86_64-linux:/app/texlive/bin/aarch64-linux
+OBSIDIAN_DISABLE_GPU=0
+GH_PATH=gh
+OBSIDIAN_CLEAN_CACHE=1
+DEBUG_LOG=0
+OBSIDIAN_USE_WAYLAND=1
+XCURSOR_PATH=/run/host/user-share/icons:/run/host/share/icons:~/.icons
+
+== new launchers ==
+-rwxr-xr-x 1 npittas npittas 264 May 16 02:11 /home/npittas/.local/bin/dolphin-xwayland-for-nuke
+-rwxr-xr-x 1 npittas npittas 100 May 16 02:11 /home/npittas/.local/bin/nukex17-direct
+-rw-r--r-- 1 npittas npittas 227 May 16 02:11 /home/npittas/.local/share/applications/NukeX-17-direct.desktop
+-rw-r--r-- 1 npittas npittas 325 May 16 02:11 /home/npittas/.local/share/applications/org.kde.dolphin-xwayland-for-nuke.desktop

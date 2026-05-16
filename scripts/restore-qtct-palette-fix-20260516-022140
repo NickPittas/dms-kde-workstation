@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+base="$HOME/dms-kde-workstation/notes/qtct-palette-fix-20260516-022140"
+[ -d "$base" ] || { echo "Missing $base" >&2; exit 1; }
+cp "$base/qt5ct.before.conf" "$HOME/.config/qt5ct/qt5ct.conf"
+cp "$base/qt6ct.before.conf" "$HOME/.config/qt6ct/qt6ct.conf"
+echo "Restored qtct palette fix 20260516-022140"

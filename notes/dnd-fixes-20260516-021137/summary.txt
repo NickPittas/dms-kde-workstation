@@ -1,0 +1,2 @@
+DND fix stamp=20260516-021137
+notes=/home/npittas/dms-kde-workstation/notes/dnd-fixes-20260516-021137

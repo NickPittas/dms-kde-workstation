@@ -1,0 +1,74 @@
+== session ==
+Name=npittas
+Desktop=niri
+Type=wayland
+State=active
+
+DMS_DEFAULT_LAUNCH_PREFIX=systemd-run --user --scope
+DMS_DISABLE_HOT_RELOAD=1
+DMS_SOCKET=/run/user/1000/danklinux-1800561.sock
+NIRI_SOCKET=/run/user/1000/niri.wayland-1.944238.sock
+QT_LOGGING_RULES=*.debug=false
+QT_QPA_PLATFORMTHEME=gtk3
+QT_QPA_PLATFORMTHEME_QT6=gtk3
+QT_QPA_PLATFORM=wayland;xcb
+WAYLAND_DISPLAY=wayland-1
+XDG_CURRENT_DESKTOP=niri
+XDG_DATA_DIRS=/home/npittas/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share:/var/lib/snapd/desktop
+XDG_RUNTIME_DIR=/run/user/1000
+XDG_SEAT_PATH=/org/freedesktop/DisplayManager/Seat0
+XDG_SEAT=seat0
+XDG_SESSION_CLASS=user
+XDG_SESSION_DESKTOP=niri
+XDG_SESSION_ID=1
+XDG_SESSION_PATH=/org/freedesktop/DisplayManager/Session0
+XDG_SESSION_TYPE=wayland
+XDG_VTNR=1
+
+== versions ==
+niri 26.04
+Error: unknown flag: --version
+Usage:
+  dms [command]
+
+Available Commands:
+  blur                  Background blur utilities
+  brightness            Control device brightness
+  chroma                Syntax highlight source code
+  clipboard             Manage clipboard
+  color                 Color utilities
+  completion            Generate the autocompletion script for the specified shell
+  config                Configuration utilities
+  dank16                Generate Base16 color palettes
+  debug-srv             Start the debug server
+  dl                    Download a URL to stdout or file
+  doctor                Diagnose DMS installation and dependencies
+  dpms                  Control display power management
+  greeter               Manage DMS greeter
+  help                  Help about any command
+  ipc                   Send IPC commands to running DMS shell
+  keybinds              Manage keybinds and cheatsheets
+  kill                  Kill running DMS shell processes
+  matugen               Generate Material Design themes
+  notify                Send a desktop notification
+  open                  Open a file, URL, or resource with an application picker
+  plugins               Manage DMS plugins
+  randr                 Query output display information
+  restart               Restart quickshell with DMS configuration
+  run                   Launch quickshell with DMS configuration
+  screenshot            Capture screenshots
+  setup                 Deploy DMS configurations
+  version               Show version information
+
+Flags:
+  -c, --config string   Specify a custom path to the DMS config directory
+  -h, --help            help for dms
+
+Use "dms [command] --help" for more information about a command.
+
+ FATAL  go: unknown flag: --version
+Quickshell 0.3.0 (revision , distributed by Fedora COPR (avengemedia/quickshell))
+
+thread 'main' (2542896) panicked at src/main.rs:241:17:
+Unrecognized argument: --version
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

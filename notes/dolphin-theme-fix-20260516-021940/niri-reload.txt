@@ -1,0 +1,7 @@
+error: unrecognized subcommand 'reload-config'
+
+  tip: a similar subcommand exists: 'load-config-file'
+
+Usage: niri msg action <ACTION>
+
+For more information, try '--help'.

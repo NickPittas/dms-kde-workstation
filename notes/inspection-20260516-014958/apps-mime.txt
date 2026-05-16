@@ -1,0 +1,34 @@
+== desktop apps dirs ==
+---/home/npittas/.local/share/applications
+17
+---/usr/share/applications
+381
+---/var/lib/flatpak/exports/share/applications
+26
+---/home/npittas/.local/share/flatpak/exports/share/applications
+1
+
+== mime defaults relevant ==
+---/home/npittas/.config/mimeapps.list
+inode/directory=org.kde.dolphin.desktop;thunar.desktop;
+text/plain=dev.zed.Zed.desktop;com.visualstudio.code.desktop;
+x-scheme-handler/http=app.zen_browser.zen.desktop;com.vivaldi.Vivaldi.desktop;
+x-scheme-handler/https=app.zen_browser.zen.desktop;com.vivaldi.Vivaldi.desktop;
+x-scheme-handler/mailto=eu.betterbird.Betterbird.desktop;org.mozilla.Thunderbird.desktop;
+inode/directory=org.kde.dolphin.desktop;
+text/plain=dev.zed.Zed.desktop;
+x-scheme-handler/cavalry=cavalry-protocol.desktop
+x-scheme-handler/http=app.zen_browser.zen.desktop;
+x-scheme-handler/https=app.zen_browser.zen.desktop;
+x-scheme-handler/mailspring=Mailspring.desktop
+x-scheme-handler/mailto=eu.betterbird.Betterbird.desktop;
+x-scheme-handler/opencode=OpenCode-handler.desktop
+---/home/npittas/.local/share/applications/mimeapps.list
+
+== default handlers ==
+inode/directory: org.kde.dolphin.desktop
+text/plain: dev.zed.Zed.desktop
+application/pdf: app.zen_browser.zen.desktop
+x-scheme-handler/http: app.zen_browser.zen.desktop
+x-scheme-handler/https: app.zen_browser.zen.desktop
+x-scheme-handler/file: 

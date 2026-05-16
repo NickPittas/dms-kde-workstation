@@ -1,0 +1,10 @@
+== keyboard config ==
+115:xkb_rules_layout=us,gr
+343:# DMS KDE Workstation Mango keyboard layout controls
+344:# English/Greek layouts are configured with xkb_rules_layout=us,gr.
+346:bind=SUPER,space,switch_keyboard_layout
+347:bind=SUPER+SHIFT,space,switch_keyboard_layout
+348:bind=SUPER+CTRL,1,switch_keyboard_layout,0
+349:bind=SUPER+CTRL,2,switch_keyboard_layout,1
+== current keyboard ==
+HDMI-A-1 kb_layout us

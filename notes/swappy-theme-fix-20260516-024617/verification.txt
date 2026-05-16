@@ -1,0 +1,33 @@
+== gsettings after ==
+'catppuccin-macchiato-blue-standard+default'
+'prefer-dark'
+== scripts after ==
+---/home/npittas/.local/bin/dms-region-screenshot-edit
+#!/usr/bin/env bash
+set -euo pipefail
+if ! command -v grim >/dev/null || ! command -v slurp >/dev/null || ! command -v swappy >/dev/null; then
+  notify-send "Screenshot tools missing" "Need grim, slurp and swappy" 2>/dev/null || true
+  exit 1
+fi
+geometry="$(slurp)" || exit 0
+[ -n "$geometry" ] || exit 0
+grim -g "$geometry" - | env GTK_THEME=catppuccin-macchiato-blue-standard+default swappy -f -
+---/home/npittas/.local/bin/dms-full-screenshot-edit
+#!/usr/bin/env bash
+set -euo pipefail
+if ! command -v grim >/dev/null || ! command -v swappy >/dev/null; then
+  notify-send "Screenshot tools missing" "Need grim and swappy" 2>/dev/null || true
+  exit 1
+fi
+grim - | env GTK_THEME=catppuccin-macchiato-blue-standard+default swappy -f -
+---/home/npittas/.local/bin/dms-region-screenshot-copy
+#!/usr/bin/env bash
+set -euo pipefail
+if ! command -v grim >/dev/null || ! command -v slurp >/dev/null || ! command -v wl-copy >/dev/null; then
+  notify-send "Screenshot tools missing" "Need grim, slurp and wl-copy" 2>/dev/null || true
+  exit 1
+fi
+geometry="$(slurp)" || exit 0
+[ -n "$geometry" ] || exit 0
+grim -g "$geometry" - | wl-copy -t image/png
+notify-send "Screenshot copied" "Region copied to clipboard" 2>/dev/null || true

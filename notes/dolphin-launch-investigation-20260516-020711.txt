@@ -1,0 +1,96 @@
+== Dolphin desktop files ==
+/usr/share/applications/org.kde.dolphin.desktop:63:Exec=dolphin %u
+
+== Niri binds mentioning dolphin/meta+e ==
+/home/npittas/.config/niri/dms/outputs.kdl:4:    mode "3840x2160@60.000"
+/home/npittas/.config/niri/dms/binds.kdl:3:    Mod+T hotkey-overlay-title="Open a Terminal: ghostty" { spawn "ghostty"; }
+/home/npittas/.config/niri/dms/binds.kdl:4:    Super+B hotkey-overlay-title="Open Zen" { spawn "flatpak" "run" "app.zen_browser.zen/x86_64/stable"; }
+/home/npittas/.config/niri/dms/binds.kdl:5:    Super+E { spawn "dolphin"; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:12:            // You can set rules, model, layout, variant and options.
+/home/npittas/.config/niri/config.kdl.backup1778284755:86:    // If the mode is omitted altogether or is invalid, niri will pick one automatically.
+/home/npittas/.config/niri/config.kdl.backup1778284755:87:    // Run `niri msg outputs` while inside a niri instance to list all outputs and their modes.
+/home/npittas/.config/niri/config.kdl.backup1778284755:88:    mode "1920x1080@120.030"
+/home/npittas/.config/niri/config.kdl.backup1778284755:124:    // You can customize the widths that "switch-preset-column-width" (Mod+R) toggles between.
+/home/npittas/.config/niri/config.kdl.backup1778284755:137:    // You can also customize the heights that "switch-preset-window-height" (Mod+Shift+R) toggles between.
+/home/npittas/.config/niri/config.kdl.backup1778284755:350:    // Keys consist of modifiers separated by + signs, followed by an XKB key name
+/home/npittas/.config/niri/config.kdl.backup1778284755:354:    // "Mod" is a special modifier equal to Super when running on a TTY, and to Alt
+/home/npittas/.config/niri/config.kdl.backup1778284755:360:    // Mod-Shift-/, which is usually the same as Mod-?,
+/home/npittas/.config/niri/config.kdl.backup1778284755:362:    Mod+Shift+Slash { show-hotkey-overlay; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:365:    Mod+T hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:366:    Mod+D hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:367:    Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn "swaylock"; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:372:    Super+Alt+S allow-when-locked=true hotkey-overlay-title=null { spawn-sh "pkill orca || exec orca"; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:399:    Mod+O repeat=false { toggle-overview; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:401:    Mod+Q repeat=false { close-window; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:403:    Mod+Left  { focus-column-left; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:407:    Mod+H     { focus-column-left; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:412:    Mod+Ctrl+Left  { move-column-left; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:413:    Mod+Ctrl+Down  { move-window-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:414:    Mod+Ctrl+Up    { move-window-up; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:415:    Mod+Ctrl+Right { move-column-right; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:416:    Mod+Ctrl+H     { move-column-left; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:417:    Mod+Ctrl+J     { move-window-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:418:    Mod+Ctrl+K     { move-window-up; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:419:    Mod+Ctrl+L     { move-column-right; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:423:    // Mod+J     { focus-window-or-workspace-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:424:    // Mod+K     { focus-window-or-workspace-up; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:425:    // Mod+Ctrl+J     { move-window-down-or-to-workspace-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:426:    // Mod+Ctrl+K     { move-window-up-or-to-workspace-up; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:428:    Mod+Home { focus-column-first; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:429:    Mod+End  { focus-column-last; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:430:    Mod+Ctrl+Home { move-column-to-first; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:431:    Mod+Ctrl+End  { move-column-to-last; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:433:    Mod+Shift+Left  { focus-monitor-left; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:437:    Mod+Shift+H     { focus-monitor-left; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:442:    Mod+Shift+Ctrl+Left  { move-column-to-monitor-left; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:443:    Mod+Shift+Ctrl+Down  { move-column-to-monitor-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:444:    Mod+Shift+Ctrl+Up    { move-column-to-monitor-up; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:445:    Mod+Shift+Ctrl+Right { move-column-to-monitor-right; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:446:    Mod+Shift+Ctrl+H     { move-column-to-monitor-left; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:447:    Mod+Shift+Ctrl+J     { move-column-to-monitor-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:448:    Mod+Shift+Ctrl+K     { move-column-to-monitor-up; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:449:    Mod+Shift+Ctrl+L     { move-column-to-monitor-right; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:452:    // Mod+Shift+Ctrl+Left  { move-window-to-monitor-left; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:456:    // Mod+Shift+Ctrl+Left  { move-workspace-to-monitor-left; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:459:    Mod+Page_Down      { focus-workspace-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:460:    Mod+Page_Up        { focus-workspace-up; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:461:    Mod+U              { focus-workspace-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:462:    Mod+I              { focus-workspace-up; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:463:    Mod+Ctrl+Page_Down { move-column-to-workspace-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:464:    Mod+Ctrl+Page_Up   { move-column-to-workspace-up; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:465:    Mod+Ctrl+U         { move-column-to-workspace-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:466:    Mod+Ctrl+I         { move-column-to-workspace-up; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:469:    // Mod+Ctrl+Page_Down { move-window-to-workspace-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:472:    Mod+Shift+Page_Down { move-workspace-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:473:    Mod+Shift+Page_Up   { move-workspace-up; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:474:    Mod+Shift+U         { move-workspace-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:475:    Mod+Shift+I         { move-workspace-up; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:483:    Mod+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:484:    Mod+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:485:    Mod+Ctrl+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:486:    Mod+Ctrl+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:488:    Mod+WheelScrollRight      { focus-column-right; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:489:    Mod+WheelScrollLeft       { focus-column-left; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:490:    Mod+Ctrl+WheelScrollRight { move-column-right; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:491:    Mod+Ctrl+WheelScrollLeft  { move-column-left; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:495:    Mod+Shift+WheelScrollDown      { focus-column-right; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:496:    Mod+Shift+WheelScrollUp        { focus-column-left; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:497:    Mod+Ctrl+Shift+WheelScrollDown { move-column-right; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:498:    Mod+Ctrl+Shift+WheelScrollUp   { move-column-left; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:506:    // Mod+TouchpadScrollDown { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.02+"; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:507:    // Mod+TouchpadScrollUp   { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.02-"; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:517:    Mod+1 { focus-workspace 1; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:518:    Mod+2 { focus-workspace 2; }
+/home/npittas/.config/niri/config.kdl.backup1778284755:519:    Mod+3 { focus-workspace 3; }
+
+== DMS app usage dolphin ==
+/home/npittas/.local/state/DankMaterialShell/session.json:52:    "org.kde.dolphin",
+/home/npittas/.local/state/DankMaterialShell/appusage.json:27:    "org.kde.dolphin": {
+/home/npittas/.local/state/DankMaterialShell/appusage.json:28:      "name": "Dolphin",
+/home/npittas/.local/state/DankMaterialShell/appusage.json:30:      "icon": "org.kde.dolphin",
+/home/npittas/.config/DankMaterialShell/plugins/.repos/0026f1eba8dedaec/DankKDEConnect/README.md:16:KDE Connect uses `kdeconnect://` URIs which only works with dolphin:
+/home/npittas/.config/DankMaterialShell/plugins/.repos/0026f1eba8dedaec/DankKDEConnect/README.md:19:# For Dolphin (KDE)
+/home/npittas/.config/DankMaterialShell/plugins/.repos/0026f1eba8dedaec/DankKDEConnect/README.md:20:xdg-mime default org.kde.dolphin.desktop x-scheme-handler/kdeconnect
+/home/npittas/.config/DankMaterialShell/plugins/dankKDEConnect/README.md:16:KDE Connect uses `kdeconnect://` URIs which only works with dolphin:
+/home/npittas/.config/DankMaterialShell/plugins/dankKDEConnect/README.md:19:# For Dolphin (KDE)
+/home/npittas/.config/DankMaterialShell/plugins/dankKDEConnect/README.md:20:xdg-mime default org.kde.dolphin.desktop x-scheme-handler/kdeconnect

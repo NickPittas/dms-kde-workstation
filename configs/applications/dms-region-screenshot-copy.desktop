@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Screenshot Region (Copy)
+Comment=Select a screen region and copy it to clipboard
+Exec=/home/npittas/.local/bin/dms-region-screenshot-copy
+Icon=applets-screenshooter
+Type=Application
+Categories=Graphics;Utility;2DGraphics;
+Keywords=screenshot;screen;capture;clipboard;grim;slurp;
+Terminal=false

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=DMS Mango Workstation Settings
+Comment=Configure the DMS KDE Workstation Mango profile
+Exec=/home/npittas/.local/bin/dms-mango-settings
+Icon=preferences-system
+Terminal=false
+Categories=Settings;DesktopSettings;Qt;

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+base="$HOME/dms-kde-workstation/notes/global-qt-env-fix-20260516-022823"
+[ -d "$base" ] || { echo "Missing $base" >&2; exit 1; }
+if [ -f "$base/90-dms-kde-qt.conf.before" ]; then
+  cp "$base/90-dms-kde-qt.conf.before" "$HOME/.config/environment.d/90-dms-kde-qt.conf"
+else
+  rm -f "$HOME/.config/environment.d/90-dms-kde-qt.conf"
+fi
+if [ -f "$base/dms-dropin.before" ]; then
+  mkdir -p "$HOME/.config/systemd/user/dms.service.d"
+  cp "$base/dms-dropin.before" "$HOME/.config/systemd/user/dms.service.d/20-kde-qt-theme.conf"
+else
+  rm -f "$HOME/.config/systemd/user/dms.service.d/20-kde-qt-theme.conf"
+fi
+systemctl --user unset-environment QT_QPA_PLATFORMTHEME QT_QPA_PLATFORMTHEME_QT6 || true
+systemctl --user daemon-reload
+systemctl --user restart dms.service || true
+echo "Restored global Qt env fix 20260516-022823"

@@ -1,0 +1,32 @@
+== mmsg current ==
+HDMI-A-1 layout S
+HDMI-A-1 title Settings
+HDMI-A-1 appid org.quickshell
+== dispatch tests ==
+--focusstack,next
+HDMI-A-1 title (2) Δεν Είναι Αυτό Που Περιμένεις - Κούδας Παναγιώτης - YouTube — Zen Browser
+HDMI-A-1 appid app.zen_browser.zen
+--focusstack,prev
+HDMI-A-1 title Settings
+HDMI-A-1 appid org.quickshell
+--focusdir,right
+HDMI-A-1 title (2) Δεν Είναι Αυτό Που Περιμένεις - Κούδας Παναγιώτης - YouTube — Zen Browser
+HDMI-A-1 appid app.zen_browser.zen
+--focusdir,left
+HDMI-A-1 title Settings
+HDMI-A-1 appid org.quickshell
+--viewtoleft_have_client
+HDMI-A-1 title Settings
+HDMI-A-1 appid org.quickshell
+--viewtoright_have_client
+HDMI-A-1 title Settings
+HDMI-A-1 appid org.quickshell
+== axisbinds ==
+280:axisbind=SUPER,UP,viewtoleft_have_client
+281:axisbind=SUPER,DOWN,viewtoright_have_client
+319:axisbind=SUPER,DOWN,focusstack,next
+320:axisbind=SUPER,UP,focusstack,prev
+327:axisbind=SUPER,UP,focusstack,prev
+328:axisbind=SUPER,DOWN,focusstack,next
+329:axisbind=SUPER,LEFT,focusdir,left
+330:axisbind=SUPER,RIGHT,focusdir,right

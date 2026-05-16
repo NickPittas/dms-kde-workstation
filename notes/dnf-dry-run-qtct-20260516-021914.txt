@@ -1,0 +1,13 @@
+Updating and loading repositories:
+Repositories loaded.
+Package    Arch   Version       Repository                                                   Size
+Installing:
+ qt5ct     x86_64 0:1.9-8.fc44  fedora                                                  952.3 KiB
+ qt6ct-kde x86_64 0:0.11-9.fc44 coprdep:copr.fedorainfracloud.org:avengemedia:danklinux 726.7 KiB
+
+Transaction Summary:
+ Installing:         2 packages
+
+Total size of inbound packages is 467 KiB. Need to download 467 KiB.
+After this operation, 2 MiB extra will be used (install 2 MiB, remove 0 B).
+Operation aborted by the user.

@@ -1,0 +1,56 @@
+== mango package/version ==
+mangowm-0.13.0-1.fc44.x86_64
+scenefx-0.4.1-1.fc44.x86_64
+wlroots0.19-0.19.3-1.fc44.x86_64
+mango 0.13.0(release)
+== session ==
+[Desktop Entry]
+Encoding=UTF-8
+Name=Mango
+DesktopNames=mango;wlroots
+Comment=mango WM
+Exec=mango
+Icon=mango
+Type=Application
+== user config head/exec/binds ==
+85:# DMS KDE Workstation Mango evaluation startup/environment
+86:exec-once=systemctl --user import-environment WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_QPA_PLATFORMTHEME_QT6 ELECTRON_OZONE_PLATFORM_HINT
+87:exec-once=dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_QPA_PLATFORMTHEME_QT6 ELECTRON_OZONE_PLATFORM_HINT
+88:exec-once=systemctl --user start dms.service
+109:xkb_rules_layout=us,gr
+166:bind=Alt,space,spawn,vicinae toggle
+167:bind=Alt,Return,spawn,ghostty
+268:mousebind=SUPER,btn_left,moveresize,curmove
+270:mousebind=SUPER,btn_right,moveresize,curresize
+282:# DMS KDE Workstation app binds
+283:bind=SUPER,e,spawn,env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dolphin
+284:bind=SUPER,b,spawn,flatpak run app.zen_browser.zen/x86_64/stable
+285:bind=none,Print,spawn,/home/npittas/.local/bin/dms-region-screenshot-edit
+286:bind=Ctrl,Print,spawn,/home/npittas/.local/bin/dms-full-screenshot-edit
+287:bind=Shift,Print,spawn,/home/npittas/.local/bin/dms-region-screenshot-copy
+== dms doctor compositor ==
+    ● shell.qml ············ Present
+
+  Compositor
+    ● niri ················· 26.04
+    ● mangowc ·············· 0.13.0
+    ○ Active ··············· niri
+    ● Background Blur ······ Supported
+
+  Quickshell Features
+    ● Polkit ··············· Available
+    ● IdleMonitor ·········· Available
+    ● IdleInhibitor ········ Available
+    ● ShortcutInhibitor ···· Available
+    ● BackgroundBlur ······· Available
+--
+
+  Services
+    ● dms.service ·········· enabled, active
+
+  Environment
+    ○ QT_QPA_PLATFORMTHEME · qt6ct
+
+  ──────────────────────────────────────
+  ✓ All checks passed!
+

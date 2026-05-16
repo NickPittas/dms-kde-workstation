@@ -1,0 +1,6 @@
+binds {
+    Alt+space { spawn "vicinae" "toggle"; }
+    Mod+T hotkey-overlay-title="Open a Terminal: ghostty" { spawn "ghostty"; }
+    Super+B hotkey-overlay-title="Open Zen" { spawn "flatpak" "run" "app.zen_browser.zen/x86_64/stable"; }
+    Super+E { spawn "gtk-launch" "org.kde.dolphin"; }
+}

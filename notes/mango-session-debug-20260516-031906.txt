@@ -1,0 +1,135 @@
+== session ==
+Name=npittas
+Desktop=mango:wlroots
+Type=wayland
+State=active
+DISPLAY=:1
+WAYLAND_DISPLAY=wayland-0
+XDG_CURRENT_DESKTOP=mango
+XDG_DATA_DIRS=/home/npittas/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share:/var/lib/snapd/desktop
+XDG_RUNTIME_DIR=/run/user/1000
+XDG_SEAT_PATH=/org/freedesktop/DisplayManager/Seat0
+XDG_SEAT=seat0
+XDG_SESSION_CLASS=user
+XDG_SESSION_DESKTOP=mango:wlroots
+XDG_SESSION_ID=53
+XDG_SESSION_PATH=/org/freedesktop/DisplayManager/Session4
+XDG_SESSION_TYPE=wayland
+XDG_VTNR=1
+== dms service ==
+× dms.service - Dank Material Shell (DMS)
+     Loaded: loaded (/usr/lib/systemd/user/dms.service; enabled; preset: disabled)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+             /home/npittas/.config/systemd/user/dms.service.d
+             └─20-kde-qt-theme.conf
+             /run/user/1000/systemd/user.control/dms.service.d
+             └─50-CPUWeight.conf, 50-IOWeight.conf
+     Active: failed (Result: exit-code) since Sat 2026-05-16 03:16:26 EEST; 2min 40s ago
+   Duration: 44min 29.691s
+ Invocation: d6506d147e054ea084c263a3258ba125
+    Process: 3452372 ExecStart=/usr/bin/dms run --session (code=exited, status=255/EXCEPTION)
+   Main PID: 3452372 (code=exited, status=255/EXCEPTION)
+   Mem peak: 805.9M
+        CPU: 56.041s
+
+May 16 03:16:25 fedora dms[3452409]:   WARN: The Wayland connection broke. Did the Wayland compositor die?
+May 16 03:16:25 fedora dms[3452372]:   WARN  go: Wayland connection error (2/20): dispatch: unable to read msg: read unix @->/run/user/1000/wayland-1: EOF
+May 16 03:16:25 fedora systemd[2660]: Stopping dms.service - Dank Material Shell (DMS)...
+May 16 03:16:25 fedora dms[3452372]:   WARN  go: Failed to read evdev event: read /dev/input/event26: no such device
+May 16 03:16:26 fedora systemd[2660]: dms.service: Main process exited, code=exited, status=255/EXCEPTION
+May 16 03:16:26 fedora systemd[2660]: dms.service: Failed with result 'exit-code'.
+May 16 03:16:26 fedora systemd[2660]: Stopped dms.service - Dank Material Shell (DMS).
+May 16 03:16:26 fedora systemd[2660]: dms.service: Consumed 56.041s CPU time over 44min 31.515s wall clock time, 805.9M memory peak.
+May 16 03:16:55 fedora systemd[2660]: Dependency failed for dms.service - Dank Material Shell (DMS).
+May 16 03:16:55 fedora systemd[2660]: dms.service: Job dms.service/start failed with result 'dependency'.
+== dms doctor ==
+                                  
+██████╗  █████╗ ███╗   ██╗██╗  ██╗
+██╔══██╗██╔══██╗████╗  ██║██║ ██╔╝
+██║  ██║███████║██╔██╗ ██║█████╔╝ 
+██║  ██║██╔══██║██║╚██╗██║██╔═██╗ 
+██████╔╝██║  ██║██║ ╚████║██║  ██╗
+╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
+
+ System Health Check
+                    
+──────────────────────────────────────
+
+  System
+    ● Operating System ····· Fedora Linux 44 (KDE Plasma Desktop Edition)
+    ● Architecture ········· amd64
+    ● Display Server ······· Wayland
+
+  Versions
+    ● DMS CLI ·············· dms v1.4.6
+    ● Quickshell ··········· Quickshell 0.3.0 (revision , distributed by Fedora COPR (avengemedia/quickshell))
+    ● DMS Shell ············ 1.4.6
+
+  Installation
+    ● DMS Configuration ···· Found
+    ● shell.qml ············ Present
+
+  Compositor
+    ● niri ················· 26.04
+    ● mangowc ·············· 0.13.0
+    ○ Active ··············· mango
+    ● Background Blur ······ Unsupported
+      → https://danklinux.com/docs/dankmaterialshell/cli-doctor#compositor-checks
+
+  Quickshell Features
+    ● Polkit ··············· Available
+    ● IdleMonitor ·········· Available
+    ● IdleInhibitor ········ Available
+    ● ShortcutInhibitor ···· Available
+    ● BackgroundBlur ······· Available
+
+  Optional Features
+    ● accountsservice ······ Available
+    ● power-profiles-daemon  Available
+    ● logind ··············· Available
+    ● cups-pk-helper ······· Available
+    ○ I2C/DDC ·············· No monitors detected
+    ● qt6-imageformats ····· Installed (5 formats)
+    ● kimageformats ········ Installed (4 formats)
+    ● Terminal ············· ghostty, kitty, alacritty, wezterm
+    ● Network ·············· NetworkManager
+    ● matugen ·············· Installed
+    ● dgop ················· Installed
+    ● cava ················· Installed
+    ○ khal ················· Not installed
+    ● danksearch ··········· Installed
+    ● fprintd ·············· Installed
+
+  Config Files
+    ● settings.json ········ Present
+    ○ clsettings.json ······ Not yet created
+    ● plugin_settings.json · Present
+    ● session.json ········· Present
+    ● dms-colors.json ······ Present
+
+  Services
+    ● dms.service ·········· enabled, failed
+      → https://danklinux.com/docs/dankmaterialshell/cli-doctor#services
+
+  ──────────────────────────────────────
+  1 error(s), 1 warning(s), 32 ok
+
+== processes ==
+222610 /usr/libexec/sddm-helper --socket /tmp/sddm-auth-45370a22-8a32-4dab-9f44-c7227f6b87c7 --id 4 --start mango --user npittas
+222619 mango
+226312 ghostty
+273961 /bin/bash -c { echo '== session =='; loginctl show-session "$XDG_SESSION_ID" -p Type -p Desktop -p Name -p State 2>/dev/null || true; env | grep -E '^(XDG|WAYLAND|DISPLAY|QT|DMS|MANGO)' | sort; echo '== dms service =='; systemctl --user status dms.service --no-pager || true; echo '== dms doctor =='; dms doctor 2>&1 || true; echo '== processes =='; pgrep -af 'dms|quickshell|qs|mango|ghostty' | head -80; echo '== mango config relevant =='; grep -n -E 'exec-once|dms|ghostty|vicinae|DMS' ~/.config/mango/config.conf 2>/dev/null || true; } | tee /home/npittas/dms-kde-workstation/notes/mango-session-debug-$(date +%Y%m%d-%H%M%S).txt
+273962 /bin/bash -c { echo '== session =='; loginctl show-session "$XDG_SESSION_ID" -p Type -p Desktop -p Name -p State 2>/dev/null || true; env | grep -E '^(XDG|WAYLAND|DISPLAY|QT|DMS|MANGO)' | sort; echo '== dms service =='; systemctl --user status dms.service --no-pager || true; echo '== dms doctor =='; dms doctor 2>&1 || true; echo '== processes =='; pgrep -af 'dms|quickshell|qs|mango|ghostty' | head -80; echo '== mango config relevant =='; grep -n -E 'exec-once|dms|ghostty|vicinae|DMS' ~/.config/mango/config.conf 2>/dev/null || true; } | tee /home/npittas/dms-kde-workstation/notes/mango-session-debug-$(date +%Y%m%d-%H%M%S).txt
+273963 tee /home/npittas/dms-kde-workstation/notes/mango-session-debug-20260516-031906.txt
+== mango config relevant ==
+85:# DMS KDE Workstation Mango evaluation startup/environment
+86:exec-once=systemctl --user import-environment WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_QPA_PLATFORMTHEME_QT6 ELECTRON_OZONE_PLATFORM_HINT
+87:exec-once=dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_QPA_PLATFORMTHEME_QT6 ELECTRON_OZONE_PLATFORM_HINT
+88:exec-once=systemctl --user start dms.service
+166:bind=Alt,space,spawn,vicinae toggle
+167:bind=Alt,Return,spawn,ghostty
+282:# DMS KDE Workstation app binds
+285:bind=none,Print,spawn,/home/npittas/.local/bin/dms-region-screenshot-edit
+286:bind=Ctrl,Print,spawn,/home/npittas/.local/bin/dms-full-screenshot-edit
+287:bind=Shift,Print,spawn,/home/npittas/.local/bin/dms-region-screenshot-copy

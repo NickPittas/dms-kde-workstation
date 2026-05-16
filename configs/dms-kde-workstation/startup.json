@@ -1,0 +1,10 @@
+{
+  "tray_ready_services": [
+    "dropbox.service",
+    "app-dev.lizardbyte.app.Sunshine.service"
+  ],
+  "post_start_commands": [
+    "pgrep -f dms-workstation-service-indicator >/dev/null || /home/npittas/.local/bin/dms-workstation-service-indicator"
+  ],
+  "wait_timeout_seconds": 30
+}

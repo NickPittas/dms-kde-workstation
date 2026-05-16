@@ -1,0 +1,204 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Reboot verification checklist for DMS KDE Workstation Mango session.
+# Run this AFTER logging back into Mango to verify tray/startup/portal health.
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+HEALTH="$ROOT/scripts/dms-workstation-health"
+POST_STARTUP_LOG="$HOME/.local/state/dms-kde-workstation/mango-post-startup.log"
+
+ok()   { printf '\033[32m  OK   %s\033[0m\n' "$*"; }
+warn() { printf '\033[33m  WARN %s\033[0m\n' "$*"; }
+fail() { printf '\033[31m  FAIL %s\033[0m\n' "$*"; }
+section() { printf '\n== %s ==\n' "$*"; }
+
+PASS=0
+FAIL=0
+WARN_COUNT=0
+
+track_ok()   { ((PASS++)) || true; ok "$@"; }
+track_warn() { ((WARN_COUNT++)) || true; warn "$@"; }
+track_fail() { ((FAIL++)) || true; fail "$@"; }
+
+printf 'DMS KDE Workstation — Reboot Verification Checklist\n'
+printf 'Date: %s\n' "$(date)"
+printf 'Session: %s / %s\n' "${XDG_CURRENT_DESKTOP:-unset}" "${XDG_SESSION_DESKTOP:-unset}"
+
+# ---- Session basics ----
+section "Session basics"
+
+if [ "${XDG_CURRENT_DESKTOP:-}" = "mango" ]; then
+  track_ok "XDG_CURRENT_DESKTOP=mango"
+else
+  track_fail "XDG_CURRENT_DESKTOP=${XDG_CURRENT_DESKTOP:-unset}, expected mango"
+fi
+
+if [ -n "${WAYLAND_DISPLAY:-}" ]; then
+  track_ok "WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
+else
+  track_fail "WAYLAND_DISPLAY not set"
+fi
+
+# ---- DMS ----
+section "DMS shell"
+
+if pgrep -f "quickshell.*dms" >/dev/null 2>&1 || pgrep -f "dms run" >/dev/null 2>&1; then
+  track_ok "DMS/Quickshell process running"
+else
+  track_fail "DMS/Quickshell process not detected"
+fi
+
+if dbus-send --session --print-reply --dest=org.kde.StatusNotifierWatcher /StatusNotifierWatcher org.freedesktop.DBus.Properties.Get string:org.kde.StatusNotifierWatcher string:RegisteredStatusNotifierItems >/dev/null 2>&1; then
+  track_ok "StatusNotifierWatcher registered on DBus"
+else
+  track_fail "StatusNotifierWatcher not available on DBus"
+fi
+
+# ---- Tray infrastructure ----
+section "Tray infrastructure"
+
+if pgrep -x xembedsniproxy >/dev/null 2>&1; then
+  track_ok "xembedsniproxy running"
+else
+  track_warn "xembedsniproxy not running"
+fi
+
+# ---- Post-startup helper ----
+section "Post-startup helper"
+
+if [ -x "$HOME/.local/bin/dms-mango-post-startup" ]; then
+  track_ok "dms-mango-post-startup installed"
+else
+  track_fail "dms-mango-post-startup missing"
+fi
+
+if [ -f "$POST_STARTUP_LOG" ]; then
+  last_run="$(grep -c 'dms-mango-post-startup begin' "$POST_STARTUP_LOG" 2>/dev/null || echo 0)"
+  if [ "$last_run" -gt 0 ]; then
+    track_ok "Post-startup ran $last_run time(s) since log creation"
+    if grep -q 'StatusNotifierWatcher ready=True' "$POST_STARTUP_LOG"; then
+      track_ok "Post-startup confirmed watcher ready"
+    else
+      track_warn "Post-startup log does not confirm watcher ready"
+    fi
+    if grep -q 'dms-mango-post-startup end' "$POST_STARTUP_LOG"; then
+      track_ok "Post-startup completed successfully"
+    else
+      track_warn "Post-startup may not have completed"
+    fi
+  else
+    track_warn "No post-startup run recorded in log"
+  fi
+else
+  track_warn "Post-startup log missing: $POST_STARTUP_LOG"
+fi
+
+# ---- Tray app icons ----
+section "Tray app icons"
+
+ITEMS="$(dbus-send --session --print-reply --dest=org.kde.StatusNotifierWatcher /StatusNotifierWatcher org.freedesktop.DBus.Properties.Get string:org.kde.StatusNotifierWatcher string:RegisteredStatusNotifierItems 2>/dev/null | grep 'string' | sed 's/.*string "//;s/"//')" || true
+
+STARTUP_JSON="$HOME/.config/dms-kde-workstation/startup.json"
+if [ -f "$STARTUP_JSON" ]; then
+  for service in $(python3 -c "import json; [print(s) for s in json.load(open('$STARTUP_JSON')).get('tray_ready_services',[])]" 2>/dev/null); do
+    label="$(echo "$service" | sed 's/.service$//' | sed 's/app-dev.lizardbyte.app.//')"
+    active_code=0
+    systemctl --user is-active --quiet "$service" 2>/dev/null || active_code=$?
+    if [ "$active_code" -eq 0 ]; then
+      track_ok "$label service active"
+    else
+      track_warn "$label service not active"
+    fi
+    # check if any tray item matches
+    if echo "$ITEMS" | grep -qi "$label" 2>/dev/null; then
+      track_ok "$label tray icon registered"
+    else
+      track_warn "$label tray icon not detected in StatusNotifier items"
+    fi
+  done
+else
+  track_warn "startup.json missing, cannot check tray-ready services"
+fi
+
+# RustDesk special case
+if echo "$ITEMS" | grep -qi "rustdesk" 2>/dev/null; then
+  track_ok "RustDesk tray icon registered (accepted weird env)"
+fi
+
+# Workstation indicator
+if echo "$ITEMS" | grep -qi "Workstation" 2>/dev/null || echo "$ITEMS" | grep -qi "tray_app" 2>/dev/null; then
+  track_ok "Workstation Services indicator registered"
+else
+  track_warn "Workstation Services indicator not detected"
+fi
+
+# ---- Portals ----
+section "Portals"
+
+for unit in xdg-desktop-portal.service xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service; do
+  if systemctl --user is-active --quiet "$unit" 2>/dev/null; then
+    track_ok "$unit active"
+  else
+    track_warn "$unit not active"
+  fi
+done
+
+# ---- Keyboard ----
+section "Keyboard layout"
+
+if grep -q 'xkb_rules_layout=us,gr' "$HOME/.config/mango/config.conf" 2>/dev/null; then
+  track_ok "Mango config has us,gr layout"
+else
+  track_warn "Mango config missing us,gr layout"
+fi
+
+if grep -q 'switch_keyboard_layout' "$HOME/.config/mango/config.conf" 2>/dev/null; then
+  track_ok "Keyboard layout toggle bind present"
+else
+  track_warn "Keyboard layout toggle bind missing"
+fi
+
+# ---- Default apps ----
+section "Default apps"
+
+check_mime() {
+  local mime="$1" expected="$2" label="$3"
+  actual="$(xdg-mime query default "$mime" 2>/dev/null || echo unset)"
+  if [ "$actual" = "$expected" ]; then
+    track_ok "$label: $actual"
+  else
+    track_warn "$label: $actual (expected $expected)"
+  fi
+}
+
+check_mime "inode/directory" "org.kde.dolphin.desktop" "Folders"
+check_mime "application/pdf" "okularApplication_pdf.desktop" "PDFs"
+check_mime "text/plain" "dev.zed.Zed.desktop" "Text/code"
+check_mime "x-scheme-handler/https" "app.zen_browser.zen.desktop" "Browser"
+
+# ---- Full health check ----
+section "Full health check"
+
+if [ -x "$HEALTH" ]; then
+  "$HEALTH" 2>&1 | tail -30
+else
+  track_warn "Health script missing: $HEALTH"
+fi
+
+# ---- Summary ----
+section "Summary"
+
+TOTAL=$((PASS + FAIL + WARN_COUNT))
+printf '  PASS: %d  WARN: %d  FAIL: %d  TOTAL: %d\n' "$PASS" "$WARN_COUNT" "$FAIL" "$TOTAL"
+
+if [ "$FAIL" -gt 0 ]; then
+  printf '\n  ACTION REQUIRED: %d failure(s) detected. See above for details.\n' "$FAIL"
+  exit 1
+elif [ "$WARN_COUNT" -gt 0 ]; then
+  printf '\n  NOTE: %d warning(s). These may be expected for your setup.\n' "$WARN_COUNT"
+  exit 0
+else
+  printf '\n  All checks passed.\n'
+  exit 0
+fi

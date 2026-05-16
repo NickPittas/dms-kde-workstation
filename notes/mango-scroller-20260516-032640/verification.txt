@@ -1,0 +1,33 @@
+== current layout ==
+HDMI-A-1 layout T
+== tagrules ==
+148:tagrule=id:1,layout_name:scroller
+149:tagrule=id:2,layout_name:scroller
+150:tagrule=id:3,layout_name:scroller
+151:tagrule=id:4,layout_name:scroller
+152:tagrule=id:5,layout_name:scroller
+153:tagrule=id:6,layout_name:scroller
+154:tagrule=id:7,layout_name:scroller
+155:tagrule=id:8,layout_name:scroller
+156:tagrule=id:9,layout_name:scroller
+== scroller options ==
+56:scroller_default_proportion=0.8
+57:scroller_focus_center=1
+58:scroller_prefer_center=1
+60:scroller_default_proportion_single=1.0
+== scroller controls ==
+300:# DMS KDE Workstation Mango scroller controls
+301-# Current layout choices through IPC; can be turned into DMS dropdown later.
+302-bind=SUPER,s,spawn,mmsg -s -l scroller
+303-bind=SUPER,apostrophe,spawn,mmsg -s -l monocle
+304-bind=SUPER,t,spawn,mmsg -s -l tile
+305-bind=SUPER,d,spawn,mmsg -s -l dwindle
+306-# Focus/scroll through clients in scroller layout.
+307-bind=SUPER,j,focusstack,next
+308-bind=SUPER,k,focusstack,prev
+309-bind=SUPER,l,focusdir,right
+310-bind=SUPER,h,focusdir,left
+311-bind=SUPER,Right,focusdir,right
+312-bind=SUPER,Left,focusdir,left
+313-axisbind=SUPER,DOWN,focusstack,next
+314-axisbind=SUPER,UP,focusstack,prev

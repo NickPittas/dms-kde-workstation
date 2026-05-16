@@ -1,0 +1,4 @@
+org.freedesktop.impl.portal.desktop.gnome                                    2660299 xdg-desktop-por npittas :1.8136       user@1000.service  -       -
+org.freedesktop.impl.portal.desktop.gtk                                      2660301 xdg-desktop-por npittas :1.8134       user@1000.service  -       -
+org.freedesktop.impl.portal.desktop.kde                                      2660322 xdg-desktop-por npittas :1.8137       user@1000.service  -       -
+org.freedesktop.impl.portal.desktop.wlr                                      2660329 xdg-desktop-por npittas :1.8139       user@1000.service  -       -

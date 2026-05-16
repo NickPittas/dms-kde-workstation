@@ -1,0 +1,2 @@
+stamp=20260516-024811
+base=/home/npittas/dms-kde-workstation/notes/default-app-cleanup-20260516-024811

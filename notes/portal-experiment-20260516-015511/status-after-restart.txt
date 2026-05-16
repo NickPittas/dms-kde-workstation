@@ -1,0 +1,65 @@
+● xdg-desktop-portal.service - Portal service
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: active (running) since Sat 2026-05-16 01:55:11 EEST; 2s ago
+ Invocation: 43ad9f6c16da4c39aca47f08b6f00110
+   Main PID: 2660296 (xdg-desktop-por)
+      Tasks: 8 (limit: 154119)
+     Memory: 5M (peak: 5.6M)
+        CPU: 27ms
+     CGroup: /user.slice/user-1000.slice/user@1000.service/session.slice/xdg-desktop-portal.service
+             └─2660296 /usr/libexec/xdg-desktop-portal
+
+May 16 01:55:11 fedora systemd[2660]: Starting xdg-desktop-portal.service - Portal service...
+May 16 01:55:11 fedora systemd[2660]: Started xdg-desktop-portal.service - Portal service.
+
+● xdg-desktop-portal-wlr.service - Portal service (wlroots implementation)
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal-wlr.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: active (running) since Sat 2026-05-16 01:55:11 EEST; 2s ago
+ Invocation: be87267f943448e89ff18e9efb221725
+   Main PID: 2660329 (xdg-desktop-por)
+      Tasks: 2 (limit: 154119)
+     Memory: 1.3M (peak: 2M)
+        CPU: 4ms
+     CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/xdg-desktop-portal-wlr.service
+             └─2660329 /usr/libexec/xdg-desktop-portal-wlr
+
+May 16 01:55:11 fedora systemd[2660]: Starting xdg-desktop-portal-wlr.service - Portal service (wlroots implementation)...
+May 16 01:55:11 fedora systemd[2660]: Started xdg-desktop-portal-wlr.service - Portal service (wlroots implementation).
+
+● xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation)
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal-gtk.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: active (running) since Sat 2026-05-16 01:55:11 EEST; 2s ago
+ Invocation: 2b325631500844fabf4d32b25766fd0d
+   Main PID: 2660301 (xdg-desktop-por)
+      Tasks: 7 (limit: 154119)
+     Memory: 9.1M (peak: 9.4M)
+        CPU: 38ms
+     CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/xdg-desktop-portal-gtk.service
+             └─2660301 /usr/libexec/xdg-desktop-portal-gtk
+
+May 16 01:55:11 fedora systemd[2660]: Starting xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation)...
+May 16 01:55:11 fedora systemd[2660]: Started xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation).
+
+● xdg-desktop-portal-gnome.service - Portal service (GNOME implementation)
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal-gnome.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: active (running) since Sat 2026-05-16 01:55:11 EEST; 2s ago
+ Invocation: 07a87f0db1ff4e0fbe318fc7ca37c883
+   Main PID: 2660299 (xdg-desktop-por)
+      Tasks: 9 (limit: 154119)
+     Memory: 15.1M (peak: 15.9M)
+        CPU: 119ms
+     CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/xdg-desktop-portal-gnome.service
+             └─2660299 /usr/libexec/xdg-desktop-portal-gnome
+
+May 16 01:55:11 fedora systemd[2660]: Starting xdg-desktop-portal-gnome.service - Portal service (GNOME implementation)...
+May 16 01:55:11 fedora xdg-desktop-portal-gnome[2660299]: Theme directory places/64 of theme klassy-dark has no size field
+May 16 01:55:11 fedora xdg-desktop-portal-gnome[2660299]: Using GtkSettings:gtk-application-prefer-dark-theme with libadwaita is unsupported. Please use AdwStyleManager:color-scheme instead.
+May 16 01:55:11 fedora systemd[2660]: Started xdg-desktop-portal-gnome.service - Portal service (GNOME implementation).

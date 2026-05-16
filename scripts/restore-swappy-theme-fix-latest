@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+stamp="$(cat "$HOME/dms-kde-workstation/notes/.last-swappy-theme-fix")"
+base="$HOME/dms-kde-workstation/notes/swappy-theme-fix-$stamp"
+[ -d "$base" ] || { echo "Missing $base" >&2; exit 1; }
+cp "$base/dms-region-screenshot-edit.before" "$HOME/.local/bin/dms-region-screenshot-edit"
+cp "$base/dms-full-screenshot-edit.before" "$HOME/.local/bin/dms-full-screenshot-edit"
+cp "$base/dms-region-screenshot-copy.before" "$HOME/.local/bin/dms-region-screenshot-copy"
+chmod +x "$HOME/.local/bin/dms-region-screenshot-edit" "$HOME/.local/bin/dms-full-screenshot-edit" "$HOME/.local/bin/dms-region-screenshot-copy"
+# Restore gsettings if captured as simple quoted values.
+if [ -f "$base/gsettings-before.txt" ]; then
+  gtk_theme="$(sed -n '1p' "$base/gsettings-before.txt")"
+  color_scheme="$(sed -n '2p' "$base/gsettings-before.txt")"
+  [ -n "$gtk_theme" ] && gsettings set org.gnome.desktop.interface gtk-theme "$gtk_theme" || true
+  [ -n "$color_scheme" ] && gsettings set org.gnome.desktop.interface color-scheme "$color_scheme" || true
+fi
+echo "Restored swappy theme fix $stamp"

@@ -1,0 +1,223 @@
+#!/usr/bin/env python3
+"""Additive Mango post-startup helper for DMS KDE Workstation.
+
+This deliberately does not start DMS. It waits for DMS/Quickshell's
+StatusNotifierWatcher and then starts Mango-only compatibility pieces.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+HOME = Path.home()
+CONFIG = HOME / ".config/dms-kde-workstation/startup.json"
+DEFAULT_CONFIG = {
+    "tray_ready_services": [
+        "dropbox.service",
+        "app-dev.lizardbyte.app.Sunshine.service",
+    ],
+    "post_start_commands": [
+        str(HOME / ".local/bin/dms-workstation-service-indicator"),
+    ],
+    "wait_timeout_seconds": 30,
+}
+LOG = HOME / ".local/state/dms-kde-workstation/mango-post-startup.log"
+ENV_KEYS = [
+    "DISPLAY",
+    "WAYLAND_DISPLAY",
+    "XDG_CURRENT_DESKTOP",
+    "XDG_SESSION_DESKTOP",
+    "XDG_SESSION_TYPE",
+    "XDG_SESSION_ID",
+    "XDG_SESSION_PATH",
+    "XDG_SESSION_CLASS",
+    "DBUS_SESSION_BUS_ADDRESS",
+    "XDG_DATA_DIRS",
+    "QT_QPA_PLATFORM",
+    "QT_QPA_PLATFORMTHEME",
+    "QT_QPA_PLATFORMTHEME_QT6",
+    "ELECTRON_OZONE_PLATFORM_HINT",
+]
+
+
+def log(message: str) -> None:
+    LOG.parent.mkdir(parents=True, exist_ok=True)
+    with LOG.open("a") as handle:
+        handle.write(time.strftime("%Y-%m-%d %H:%M:%S ") + message + "\n")
+
+
+def run(args: list[str], timeout: int = 15) -> tuple[int, str]:
+    try:
+        proc = subprocess.run(args, text=True, capture_output=True, timeout=timeout)
+        output = (proc.stdout + proc.stderr).strip()
+        log(f"$ {' '.join(args)} -> {proc.returncode} {output[:500]}")
+        return proc.returncode, output
+    except Exception as exc:  # noqa: BLE001 - startup log should capture everything
+        log(f"$ {' '.join(args)} -> EXC {exc}")
+        return 1, str(exc)
+
+
+def load_config() -> dict:
+    if not CONFIG.exists():
+        CONFIG.parent.mkdir(parents=True, exist_ok=True)
+        CONFIG.write_text(json.dumps(DEFAULT_CONFIG, indent=2) + "\n")
+        return dict(DEFAULT_CONFIG)
+    try:
+        data = json.loads(CONFIG.read_text())
+    except Exception as exc:  # noqa: BLE001
+        log(f"Config parse failed, using defaults: {exc}")
+        return dict(DEFAULT_CONFIG)
+    merged = dict(DEFAULT_CONFIG)
+    merged.update(data if isinstance(data, dict) else {})
+    return merged
+
+
+def import_environment() -> None:
+    present = [key for key in ENV_KEYS if os.environ.get(key)]
+    if present:
+        run(["systemctl", "--user", "import-environment", *present])
+        run(["dbus-update-activation-environment", "--systemd", *present])
+
+
+def watcher_ready() -> bool:
+    code, output = run(
+        [
+            "dbus-send",
+            "--session",
+            "--print-reply",
+            "--dest=org.kde.StatusNotifierWatcher",
+            "/StatusNotifierWatcher",
+            "org.freedesktop.DBus.Properties.Get",
+            "string:org.kde.StatusNotifierWatcher",
+            "string:RegisteredStatusNotifierItems",
+        ],
+        timeout=5,
+    )
+    return code == 0 and "method return" in output
+
+
+def wait_for_watcher(timeout: int) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if watcher_ready():
+            return True
+        time.sleep(1)
+    return False
+
+
+def wait_for_tray_settle(settle_seconds: int = 5) -> None:
+    """Wait for the DMS tray host to fully initialize.
+
+    StatusNotifierWatcher appears on the bus before DMS's tray widget
+    is ready to accept icon registrations. Without this delay, services
+    that are restarted immediately after the watcher appears will fail
+    to register their tray icons.
+    """
+    log(f"Waiting {settle_seconds}s for tray host to settle…")
+    time.sleep(settle_seconds)
+    log("Tray settle wait done")
+
+
+def ensure_xembedsniproxy() -> None:
+    code, _ = run(["pgrep", "-x", "xembedsniproxy"], timeout=5)
+    if code == 0:
+        log("xembedsniproxy already running")
+        return
+    subprocess.Popen(["xembedsniproxy"], start_new_session=True)
+    log("started xembedsniproxy")
+
+
+def restart_services(services: list[str]) -> None:
+    for service in services:
+        if not isinstance(service, str) or not service.endswith(".service"):
+            log(f"Skipping invalid service entry: {service!r}")
+            continue
+        run(["systemctl", "--user", "restart", service], timeout=25)
+
+
+def start_commands(commands: list[str]) -> None:
+    for command in commands:
+        if not isinstance(command, str) or not command.strip():
+            continue
+        subprocess.Popen(["bash", "-lc", command], start_new_session=True)
+        log(f"started post command: {command}")
+
+
+def launch_autostart_apps() -> None:
+    """Parse and launch apps from ~/.config/autostart/*.desktop.
+
+    Mango does not read the XDG autostart directory like KDE does.
+    This function replicates that behavior: for each .desktop file
+    that is not Hidden=true, extract the Exec line and launch it.
+    """
+    autostart_dir = HOME / ".config/autostart"
+    if not autostart_dir.exists():
+        return
+    for desktop_file in sorted(autostart_dir.glob("*.desktop")):
+        try:
+            text = desktop_file.read_text(errors="ignore")
+        except OSError:
+            continue
+        # Skip hidden/disabled entries
+        if "Hidden=true" in text:
+            log(f"autostart skip (Hidden): {desktop_file.name}")
+            continue
+        # Skip entries that specify OnlyShowIn for other DEs
+        only_show_in = None
+        for line in text.splitlines():
+            if line.strip().startswith("OnlyShowIn="):
+                only_show_in = line.split("=", 1)[1].strip()
+                break
+        if only_show_in:
+            # Check if our desktop matches any of the listed DEs
+            current = os.environ.get("XDG_SESSION_DESKTOP", "")
+            listed = [x.strip() for x in only_show_in.split(";") if x.strip()]
+            if not any(de in current for de in listed):
+                log(f"autostart skip (OnlyShowIn={only_show_in}): {desktop_file.name}")
+                continue
+        # Extract Exec line
+        exec_line = None
+        for line in text.splitlines():
+            if line.strip().startswith("Exec="):
+                exec_line = line.split("=", 1)[1].strip()
+                break
+        if not exec_line:
+            log(f"autostart skip (no Exec): {desktop_file.name}")
+            continue
+        # Launch in background
+        log(f"autostart launch: {desktop_file.name} -> {exec_line}")
+        subprocess.Popen(
+            ["bash", "-c", exec_line],
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+
+def main() -> int:
+    log("--- dms-mango-post-startup begin ---")
+    cfg = load_config()
+    import_environment()
+    timeout = int(cfg.get("wait_timeout_seconds", 30))
+    ready = wait_for_watcher(timeout)
+    log(f"StatusNotifierWatcher ready={ready}")
+    ensure_xembedsniproxy()
+    if ready:
+        wait_for_tray_settle(int(cfg.get("tray_settle_seconds", 5)))
+        launch_autostart_apps()
+        restart_services(list(cfg.get("tray_ready_services", [])))
+        start_commands(list(cfg.get("post_start_commands", [])))
+    else:
+        log("Watcher not ready; skipped tray-sensitive service restarts")
+        return 2
+    log("--- dms-mango-post-startup end ---")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

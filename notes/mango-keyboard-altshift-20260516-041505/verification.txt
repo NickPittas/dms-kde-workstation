@@ -1,0 +1,10 @@
+== keyboard/floating binds after ==
+172:bind=Alt,space,spawn,vicinae toggle
+195:bind=ALT,backslash,togglefloating,
+338:bind=SUPER+SHIFT,space,togglefloating,
+345:bind=SUPER+CTRL,1,switch_keyboard_layout,0
+346:bind=SUPER+CTRL,2,switch_keyboard_layout,1
+350:bind=ALT,shift_l,switch_keyboard_layout
+351:bind=ALT,shift_r,switch_keyboard_layout
+== current keyboard ==
+HDMI-A-1 kb_layout us

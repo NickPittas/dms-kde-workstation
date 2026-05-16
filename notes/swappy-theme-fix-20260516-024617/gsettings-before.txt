@@ -1,0 +1,2 @@
+'adw-gtk3-dark'
+'prefer-dark'

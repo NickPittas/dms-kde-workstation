@@ -1,0 +1,9 @@
+== blender desktop after ==
+-rwx--x--x 1 npittas npittas 326 May 16 03:00 /home/npittas/.local/share/applications/Blender 5.desktop
+Name=Blender 5
+Exec=/home/npittas/blender-5.0.1-linux-x64/blender-launcher %F
+Terminal=false
+Type=Application
+MimeType=application/x-blender;
+== default ==
+Blender 5.desktop

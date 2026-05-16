@@ -1,0 +1,63 @@
+○ graphical-session.target - Current graphical user session
+     Loaded: loaded (/usr/lib/systemd/user/graphical-session.target; static)
+     Active: inactive (dead) since Sat 2026-05-16 03:16:26 EEST; 3min 17s ago
+ Invocation: 1383f0b024e743a699a81f221c5dd5ba
+       Docs: man:systemd.special(7)
+
+May 16 02:31:54 fedora systemd[2660]: Reached target graphical-session.target - Current graphical user session.
+May 16 03:16:26 fedora systemd[2660]: Stopped target graphical-session.target - Current graphical user session.
+
+○ xdg-desktop-portal.service - Portal service
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: inactive (dead) since Sat 2026-05-16 03:16:25 EEST; 3min 17s ago
+   Duration: 44min 30.535s
+ Invocation: 45eff5e8b2ba40cbaffc37cbce8c49ed
+    Process: 3452472 ExecStart=/usr/libexec/xdg-desktop-portal (code=killed, signal=TERM)
+   Main PID: 3452472 (code=killed, signal=TERM)
+   Mem peak: 7.6M
+        CPU: 182ms
+
+May 16 03:19:06 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 03:19:06 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+May 16 03:19:18 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 03:19:18 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+May 16 03:19:18 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 03:19:18 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+May 16 03:19:19 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 03:19:19 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+May 16 03:19:42 fedora systemd[2660]: Dependency failed for xdg-desktop-portal.service - Portal service.
+May 16 03:19:42 fedora systemd[2660]: xdg-desktop-portal.service: Job xdg-desktop-portal.service/start failed with result 'dependency'.
+
+● xdg-desktop-portal-wlr.service - Portal service (wlroots implementation)
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal-wlr.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: active (running) since Sat 2026-05-16 03:19:42 EEST; 1s ago
+ Invocation: 49125fff6192427b86a78d28afba6cd9
+   Main PID: 287997 (xdg-desktop-por)
+      Tasks: 2 (limit: 154119)
+     Memory: 1.2M (peak: 1.5M)
+        CPU: 3ms
+     CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/xdg-desktop-portal-wlr.service
+             └─287997 /usr/libexec/xdg-desktop-portal-wlr
+
+May 16 03:19:42 fedora systemd[2660]: Starting xdg-desktop-portal-wlr.service - Portal service (wlroots implementation)...
+May 16 03:19:42 fedora systemd[2660]: Started xdg-desktop-portal-wlr.service - Portal service (wlroots implementation).
+
+● xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation)
+     Loaded: loaded (/usr/lib/systemd/user/xdg-desktop-portal-gtk.service; static)
+    Drop-In: /usr/lib/systemd/user/service.d
+             └─10-timeout-abort.conf
+     Active: active (running) since Sat 2026-05-16 03:19:42 EEST; 1s ago
+ Invocation: 7841c10e9d1f493ca8e034a9028ded3b
+   Main PID: 287999 (xdg-desktop-por)
+      Tasks: 7 (limit: 154119)
+     Memory: 10M (peak: 10.3M)
+        CPU: 38ms
+     CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/xdg-desktop-portal-gtk.service
+             └─287999 /usr/libexec/xdg-desktop-portal-gtk
+
+May 16 03:19:42 fedora systemd[2660]: Starting xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation)...
+May 16 03:19:42 fedora systemd[2660]: Started xdg-desktop-portal-gtk.service - Portal service (GTK/GNOME implementation).

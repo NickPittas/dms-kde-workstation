@@ -1,0 +1,10 @@
+131 dnf -y install --nogpgcheck --disabl 2026-05-14 12:10:25                 1
+132 dnf install ./opencode-desktop-linux 2026-05-15 18:14:13                 1
+133 dnf remove open-code                 2026-05-15 18:45:52                 5
+134 dnf install -y /home/npittas/Downloa 2026-05-15 18:53:15                 5
+135 /usr/bin/dnf upgrade                 2026-05-15 19:17:08               131
+136 dnf -y install --nogpgcheck --disabl 2026-05-15 19:18:49                 1
+137                                      2026-05-15 19:38:38                 8
+138                                      2026-05-15 19:39:13                 1
+139                                      2026-05-15 19:39:28                 1
+140 dnf install -y kate flatseal pavucon 2026-05-15 22:45:30                23

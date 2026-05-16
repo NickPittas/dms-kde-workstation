@@ -1,0 +1,200 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+APPLY=0
+INSTALL_PACKAGES=0
+APPLY_OBSIDIAN_OVERRIDE=0
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/apply-mango-baseline [options]
+
+Safe Fedora Mango baseline deployer for DMS KDE Workstation.
+Dry-run is the default. Nothing is written unless --apply is passed.
+
+Options:
+  --apply                       Write files and run user-level setup actions.
+  --install-packages            Install approved baseline packages with dnf.
+                                Requires sudo and uses temporary Terra repo for mangowm.
+  --obsidian-override           Apply tested Obsidian Flatpak Wayland/DnD override if installed.
+  -h, --help                    Show this help.
+
+Examples:
+  scripts/apply-mango-baseline
+  scripts/apply-mango-baseline --apply
+  scripts/apply-mango-baseline --apply --obsidian-override
+  scripts/apply-mango-baseline --apply --install-packages
+EOF
+}
+
+log() { printf '%s\n' "$*"; }
+run() {
+  if [ "$APPLY" -eq 1 ]; then
+    log "+ $*"
+    "$@"
+  else
+    log "DRY-RUN: $*"
+  fi
+}
+
+backup_file() {
+  local target="$1"
+  [ -e "$target" ] || return 0
+  local stamp backup_dir backup
+  stamp="$(date +%Y%m%d-%H%M%S)"
+  backup_dir="$HOME/.local/state/dms-kde-workstation/backups/$stamp"
+  backup="$backup_dir${target#$HOME}"
+  if [ "$APPLY" -eq 1 ]; then
+    mkdir -p "$(dirname "$backup")"
+    cp -a "$target" "$backup"
+    log "Backed up $target -> $backup"
+  else
+    log "DRY-RUN: backup $target -> $backup"
+  fi
+}
+
+install_file() {
+  local src="$1" target="$2" mode="${3:-0644}"
+  if [ ! -f "$src" ]; then
+    log "ERROR: source missing: $src" >&2
+    exit 1
+  fi
+  backup_file "$target"
+  if [ "$APPLY" -eq 1 ]; then
+    mkdir -p "$(dirname "$target")"
+    tee "$target" >/dev/null < "$src"
+    chmod "$mode" "$target"
+    log "Installed $target"
+  else
+    log "DRY-RUN: install $src -> $target mode $mode"
+  fi
+}
+
+install_packages() {
+  local fedora_packages=(
+    qt5ct qt6ct-kde
+    dolphin kate okular gwenview ark kcalc filelight kwalletmanager5 plasma-discover kde-partitionmanager
+    xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk xdg-desktop-portal-kde
+    blueman pavucontrol qpwgraph firewall-config system-config-printer gparted flatseal
+    fuzzel wl-clipboard grim slurp swappy wf-recorder
+  )
+
+  run sudo dnf install -y --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' mangowm
+  run sudo dnf install -y "${fedora_packages[@]}"
+}
+
+apply_files() {
+  install_file "$ROOT/configs/mango/config.conf.working-20260516" \
+    "$HOME/.config/mango/config.conf" 0644
+
+  install_file "$ROOT/configs/systemd-user/xdg-desktop-portal.service.mango-override-20260516" \
+    "$HOME/.config/systemd/user/xdg-desktop-portal.service" 0644
+
+  install_file "$ROOT/configs/xdg-desktop-portal/mango-portals.conf.working-20260516" \
+    "$HOME/.config/xdg-desktop-portal/mango-portals.conf" 0644
+
+  install_file "$ROOT/configs/mime/mimeapps.list.working-20260516" \
+    "$HOME/.config/mimeapps.list" 0644
+
+  install_file "$ROOT/configs/environment.d/90-dms-kde-qt.conf" \
+    "$HOME/.config/environment.d/90-dms-kde-qt.conf" 0644
+
+  install_file "$ROOT/configs/scripts/dms-region-screenshot-edit" \
+    "$HOME/.local/bin/dms-region-screenshot-edit" 0755
+  install_file "$ROOT/configs/scripts/dms-full-screenshot-edit" \
+    "$HOME/.local/bin/dms-full-screenshot-edit" 0755
+  install_file "$ROOT/configs/scripts/dms-region-screenshot-copy" \
+    "$HOME/.local/bin/dms-region-screenshot-copy" 0755
+  install_file "$ROOT/configs/scripts/mango-workstation-menu" \
+    "$HOME/.local/bin/mango-workstation-menu" 0755
+  install_file "$ROOT/configs/scripts/dms-workstation-service-indicator" \
+    "$HOME/.local/bin/dms-workstation-service-indicator" 0755
+
+  install_file "$ROOT/tools/dms-mango-settings.py" \
+    "$HOME/.local/bin/dms-mango-settings" 0755
+
+  install_file "$ROOT/scripts/dms-mango-post-startup" \
+    "$HOME/.local/bin/dms-mango-post-startup" 0755
+
+  install_file "$ROOT/configs/dms-kde-workstation/startup.json" \
+    "$HOME/.config/dms-kde-workstation/startup.json" 0644
+
+  install_file "$ROOT/configs/applications/dms-region-screenshot-edit.desktop" \
+    "$HOME/.local/share/applications/dms-region-screenshot-edit.desktop" 0644
+  install_file "$ROOT/configs/applications/dms-full-screenshot-edit.desktop" \
+    "$HOME/.local/share/applications/dms-full-screenshot-edit.desktop" 0644
+  install_file "$ROOT/configs/applications/dms-region-screenshot-copy.desktop" \
+    "$HOME/.local/share/applications/dms-region-screenshot-copy.desktop" 0644
+  install_file "$ROOT/configs/applications/dms-mango-settings.desktop" \
+    "$HOME/.local/share/applications/dms-mango-settings.desktop" 0644
+  install_file "$ROOT/configs/applications/dms-mango-settings.desktop" \
+    "$HOME/.config/autostart/dms-mango-settings.desktop" 0644
+}
+
+apply_user_actions() {
+  run systemctl --user daemon-reload
+
+  if command -v systemctl >/dev/null 2>&1; then
+    run systemctl --user restart xdg-desktop-portal.service xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service
+  fi
+
+  if [ "$APPLY_OBSIDIAN_OVERRIDE" -eq 1 ]; then
+    if command -v flatpak >/dev/null 2>&1 && flatpak info md.obsidian.Obsidian >/dev/null 2>&1; then
+      run flatpak override --user --socket=wayland --env=OBSIDIAN_USE_WAYLAND=1 md.obsidian.Obsidian
+    else
+      log "Skipping Obsidian override: Flatpak app md.obsidian.Obsidian not installed."
+    fi
+  fi
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --apply) APPLY=1 ;;
+    --install-packages) INSTALL_PACKAGES=1 ;;
+    --obsidian-override) APPLY_OBSIDIAN_OVERRIDE=1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) log "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+log "DMS KDE Workstation Mango baseline deployer"
+log "Project root: $ROOT"
+if [ "$APPLY" -eq 1 ]; then
+  log "Mode: APPLY"
+else
+  log "Mode: DRY-RUN"
+fi
+
+if [ "$INSTALL_PACKAGES" -eq 1 ]; then
+  install_packages
+else
+  log "Skipping package installation. Use --install-packages to enable it."
+fi
+
+apply_files
+apply_user_actions
+
+cat <<EOF
+
+Next verification steps:
+  $ROOT/scripts/dms-workstation-health
+
+Manual checks:
+  - log into Mango if not already there
+  - confirm DMS bar and Workstation Services indicator are visible
+  - confirm DMS Mango Settings autostarts and shows one tray icon only
+  - confirm Alt+Shift toggles US/Greek
+  - confirm Dolphin -> Nuke and Dolphin -> Blender DnD
+  - confirm screenshot shortcuts open Swappy/copy image
+  - open DMS Theme/Colors and re-export GTK3/4 + QT5/6 once after qt5ct/qt6ct-kde are installed
+  - add startup apps from the Settings app Startup page and verify they appear after next login
+EOF
+
+if [ "$APPLY" -eq 0 ]; then
+  cat <<'EOF'
+
+This was a dry-run. Re-run with --apply to write files.
+EOF
+fi

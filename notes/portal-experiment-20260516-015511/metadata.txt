@@ -1,0 +1,4 @@
+stamp=20260516-015511
+backup=/home/npittas/dms-kde-workstation/configs/xdg-desktop-portal/niri-portals.conf.backup-20260516-015511
+candidate=/home/npittas/dms-kde-workstation/configs/xdg-desktop-portal/niri-portals.kde-wlr-experiment-20260516-015511.conf
+active=/home/npittas/.config/xdg-desktop-portal/niri-portals.conf

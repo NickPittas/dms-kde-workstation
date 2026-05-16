@@ -1,0 +1,37 @@
+[Added Associations]
+application/json=dev.zed.Zed.desktop;com.visualstudio.code.desktop;
+application/octet-stream=NukeX 17.desktop;
+application/x-bcpio=io.github.peazip.PeaZip.desktop;
+application/x-docbook+xml=dev.zed.Zed.desktop;com.visualstudio.code.desktop;
+application/x-shellscript=dev.zed.Zed.desktop;
+application/x-sv4cpio=io.github.peazip.PeaZip.desktop;
+application/x-sv4crc=io.github.peazip.PeaZip.desktop;
+application/x-yaml=dev.zed.Zed.desktop;com.visualstudio.code.desktop;
+application/x-zerosize=com.visualstudio.code.desktop;
+inode/directory=org.kde.dolphin.desktop;thunar.desktop;
+text/markdown=dev.zed.Zed.desktop;com.visualstudio.code.desktop;
+text/plain=dev.zed.Zed.desktop;com.visualstudio.code.desktop;
+text/x-cmake=dev.zed.Zed.desktop;com.visualstudio.code.desktop;
+x-scheme-handler/http=app.zen_browser.zen.desktop;com.vivaldi.Vivaldi.desktop;
+x-scheme-handler/https=app.zen_browser.zen.desktop;com.vivaldi.Vivaldi.desktop;
+x-scheme-handler/mailto=eu.betterbird.Betterbird.desktop;org.mozilla.Thunderbird.desktop;
+
+[Default Applications]
+application/json=dev.zed.Zed.desktop;
+application/octet-stream=NukeX 17.desktop;
+application/x-bcpio=io.github.peazip.PeaZip.desktop;
+application/x-docbook+xml=dev.zed.Zed.desktop;
+application/x-sv4cpio=io.github.peazip.PeaZip.desktop;
+application/x-sv4crc=io.github.peazip.PeaZip.desktop;
+application/x-yaml=dev.zed.Zed.desktop;
+application/x-zerosize=com.visualstudio.code.desktop;
+inode/directory=org.kde.dolphin.desktop;
+text/markdown=dev.zed.Zed.desktop;
+text/plain=dev.zed.Zed.desktop;
+text/x-cmake=dev.zed.Zed.desktop;
+x-scheme-handler/cavalry=cavalry-protocol.desktop
+x-scheme-handler/http=app.zen_browser.zen.desktop;
+x-scheme-handler/https=app.zen_browser.zen.desktop;
+x-scheme-handler/mailspring=Mailspring.desktop
+x-scheme-handler/mailto=eu.betterbird.Betterbird.desktop;
+x-scheme-handler/opencode=OpenCode-handler.desktop

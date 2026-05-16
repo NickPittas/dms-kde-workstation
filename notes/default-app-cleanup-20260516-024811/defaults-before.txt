@@ -1,0 +1,18 @@
+== before ==
+inode/directory:                    org.kde.dolphin.desktop
+text/plain:                         dev.zed.Zed.desktop
+application/pdf:                    app.zen_browser.zen.desktop
+image/png:                          app.zen_browser.zen.desktop
+image/jpeg:                         app.zen_browser.zen.desktop
+image/gif:                          app.zen_browser.zen.desktop
+image/webp:                         app.zen_browser.zen.desktop
+image/tiff:                         krita_tiff.desktop
+image/svg+xml:                      app.zen_browser.zen.desktop
+application/zip:                    io.github.peazip.PeaZip.desktop
+application/x-7z-compressed:        io.github.peazip.PeaZip.desktop
+application/vnd.rar:                org.kde.ark.desktop
+application/x-rar-compressed:       io.github.peazip.PeaZip.desktop
+application/x-tar:                  io.github.peazip.PeaZip.desktop
+application/gzip:                   io.github.peazip.PeaZip.desktop
+application/x-bzip2:                org.kde.ark.desktop
+application/x-xz:                   io.github.peazip.PeaZip.desktop

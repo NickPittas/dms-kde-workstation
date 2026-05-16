@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+stamp="$(cat "$HOME/dms-kde-workstation/notes/.last-default-app-cleanup")"
+base="$HOME/dms-kde-workstation/notes/default-app-cleanup-$stamp"
+[ -d "$base" ] || { echo "Missing $base" >&2; exit 1; }
+if [ -f "$base/mimeapps.before.list" ]; then
+  cp "$HOME/.config/mimeapps.list" "$HOME/.config/mimeapps.list.before-default-app-restore-$(date +%Y%m%d-%H%M%S)" 2>/dev/null || true
+  cp "$base/mimeapps.before.list" "$HOME/.config/mimeapps.list"
+  echo "Restored ~/.config/mimeapps.list from $base/mimeapps.before.list"
+else
+  echo "No previous mimeapps.list backup was found; not removing current file automatically." >&2
+  exit 1
+fi
