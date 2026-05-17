@@ -32,6 +32,7 @@ The installer path is now **automation-first**.
 - current `dms-mango-settings` app
 - settings app desktop file
 - settings app autostart entry
+- DMS Dolphin launch override for qt6ct theming from the DMS dock
 
 It also uses direct file writes via `tee`, not `cp`, for deployed files.
 
@@ -175,6 +176,7 @@ Then manually verify:
 - launching settings again does **not** create a second tray icon
 - Alt+Shift toggles `us` / `gr`
 - Ark/Okular/Dolphin are dark themed
+- Dolphin launched from the DMS dock is also dark themed (no checkerboard rows)
 - Dolphin → Nuke DnD works
 - Dolphin → Blender DnD works
 - screenshot actions open Swappy / copy image
@@ -216,6 +218,17 @@ exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run
 ```
 
 This is required because otherwise DMS-launched KDE/Qt apps can inherit `gtk3` and appear white.
+
+### Dolphin from the DMS dock needs a DMS app override
+
+The DMS dock can launch apps through its own launcher pipeline. For Dolphin, that path must carry:
+
+```text
+QT_QPA_PLATFORMTHEME=qt6ct
+QT_QPA_PLATFORMTHEME_QT6=qt6ct
+```
+
+The baseline installer now applies a Dolphin-specific DMS `appOverrides` entry in `~/.config/DankMaterialShell/settings.json` so Dolphin launched from the DMS dock keeps the correct dark theme.
 
 ### Post-startup helper owns startup app launch timing
 

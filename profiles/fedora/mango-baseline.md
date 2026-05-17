@@ -197,9 +197,10 @@ The installer/profile script must:
 
 ## 2026-05-16 hardening additions
 
-The Mango baseline now includes the additive post-startup helper and category-backed startup config:
+The Mango baseline now includes the additive post-startup helper, DMS launch overrides, and category-backed startup config:
 
 - `~/.local/bin/dms-mango-post-startup`
+- `~/.local/bin/apply-dms-launch-overrides`
 - `~/.config/dms-kde-workstation/startup.json`
 
 Purpose:
@@ -209,6 +210,7 @@ Purpose:
 - launch startup apps from `~/.config/autostart/*.desktop` after the UI is ready
 - ensure `xembedsniproxy`
 - restart only configured tray-ready services after tray infrastructure is ready
+- merge DMS Dolphin launch override so dock launches use qt6ct env correctly
 
 This avoids putting Dropbox/Sunshine restart logic directly in Mango config and avoids taking over DMS startup ownership.
 

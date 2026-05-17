@@ -578,6 +578,7 @@ class MainWindow(QMainWindow):
             ("🖱", "Input", self.page_input),
             ("⌨", "Keyboard", self.page_keyboard),
             ("⌘", "Keybindings", self.page_keybindings),
+            ("▥", "Window Rules", self.page_window_rules),
             ("🚀", "Startup", self.page_startup),
             ("●", "Services", self.page_services),
             ("◉", "Portals", self.page_portals),
@@ -1319,6 +1320,119 @@ class MainWindow(QMainWindow):
         ])
         return page
 
+    def page_window_rules(self) -> QWidget:
+        page, layout = self.make_page(
+            "Window Rules",
+            "Per-app Mango window rules. Match by app ID and/or title, then apply opacity, floating, blur, decoration, and behavior rules to that app only.",
+        )
+
+        current = self.card(
+            layout,
+            "Current rules",
+            "These are the windowrule= lines currently present in your Mango config.",
+        )
+        self.window_rules_list = QListWidget()
+        self.window_rules_list.setMinimumHeight(220)
+        self.window_rules_list.itemClicked.connect(self.load_selected_window_rule)
+        current.addWidget(self.window_rules_list)
+
+        inspect = self.card(
+            layout,
+            "Focused window inspector",
+            "Mango only exposes the focused window directly. Use delayed capture so this settings app gets out of the way first.",
+        )
+        self.window_rule_focus_label = QLabel()
+        self.window_rule_focus_label.setObjectName("pageSub")
+        self.window_rule_focus_label.setWordWrap(True)
+        inspect.addWidget(self.window_rule_focus_label)
+        inspect_row = QHBoxLayout()
+        inspect_row.addWidget(self.action_button("Refresh Focused Window", self.refresh_focused_window_rule_target, False, "Query Mango for the currently focused window title and app ID."))
+        inspect_row.addWidget(self.action_button("Capture After 3 Seconds", self.capture_window_rule_target_delayed, True, "Hide this app, switch to the target app, then capture its app ID and title after 3 seconds."))
+        inspect_row.addWidget(self.action_button("Use Focused Window Now", self.use_focused_window_for_rule, False, "Copy the currently focused window title and app ID into the editor below immediately."))
+        inspect_row.addStretch(1)
+        inspect.addLayout(inspect_row)
+
+        editor = self.card(
+            layout,
+            "Rule editor",
+            "Create or replace one Mango windowrule entry. Match by app ID, title, or both. Mango supports per-window opacity here. Per-window blur strength is not available — only blur disable/enable via noblur.",
+        )
+        form = QGridLayout()
+        self.window_rule_appid = QLineEdit()
+        self.window_rule_appid.setPlaceholderText("com.mitchellh.ghostty or app.zen_browser.zen")
+        self.window_rule_title = QLineEdit()
+        self.window_rule_title.setPlaceholderText("Optional title match / regex")
+        self.window_rule_enable_title = QCheckBox("Match title too")
+        self.window_rule_focused_opacity = QSlider(Qt.Orientation.Horizontal)
+        self.window_rule_focused_opacity.setRange(0, 100)
+        self.window_rule_focused_opacity.setValue(100)
+        self.window_rule_focused_opacity_value = QLabel("disabled")
+        self.window_rule_unfocused_opacity = QSlider(Qt.Orientation.Horizontal)
+        self.window_rule_unfocused_opacity.setRange(0, 100)
+        self.window_rule_unfocused_opacity.setValue(100)
+        self.window_rule_unfocused_opacity_value = QLabel("disabled")
+        self.window_rule_enable_focused_opacity = QCheckBox("Use focused opacity override")
+        self.window_rule_enable_unfocused_opacity = QCheckBox("Use unfocused opacity override")
+        form.addWidget(QLabel("App ID match"), 0, 0)
+        form.addWidget(self.window_rule_appid, 0, 1)
+        form.addWidget(self.window_rule_enable_title, 1, 0)
+        form.addWidget(self.window_rule_title, 1, 1)
+        form.addWidget(self.window_rule_enable_focused_opacity, 2, 0)
+        focus_row = QHBoxLayout()
+        focus_row.addWidget(self.window_rule_focused_opacity, 1)
+        focus_row.addWidget(self.window_rule_focused_opacity_value)
+        form.addLayout(focus_row, 2, 1)
+        form.addWidget(self.window_rule_enable_unfocused_opacity, 3, 0)
+        unfocus_row = QHBoxLayout()
+        unfocus_row.addWidget(self.window_rule_unfocused_opacity, 1)
+        unfocus_row.addWidget(self.window_rule_unfocused_opacity_value)
+        form.addLayout(unfocus_row, 3, 1)
+        editor.addLayout(form)
+        self.window_rule_focused_opacity.valueChanged.connect(lambda v: self.window_rule_focused_opacity_value.setText(f"{v}% / {v/100:.2f}"))
+        self.window_rule_unfocused_opacity.valueChanged.connect(lambda v: self.window_rule_unfocused_opacity_value.setText(f"{v}% / {v/100:.2f}"))
+        self.window_rule_enable_title.toggled.connect(lambda _=False: self.build_window_rule_line())
+        self.window_rule_enable_focused_opacity.toggled.connect(lambda _=False: self.build_window_rule_line())
+        self.window_rule_enable_unfocused_opacity.toggled.connect(lambda _=False: self.build_window_rule_line())
+        self.window_rule_focused_opacity.valueChanged.connect(lambda _=0: self.build_window_rule_line())
+        self.window_rule_unfocused_opacity.valueChanged.connect(lambda _=0: self.build_window_rule_line())
+        self.window_rule_focused_opacity_value.setText("100% / 1.00")
+        self.window_rule_unfocused_opacity_value.setText("100% / 1.00")
+
+        self.window_rule_toggles: dict[str, QCheckBox] = {}
+        toggles = QGridLayout()
+        toggle_defs = [
+            ("isfloating", "Floating"),
+            ("isglobal", "Sticky / global"),
+            ("isoverlay", "Overlay / top layer"),
+            ("noblur", "Disable blur"),
+            ("isnoborder", "No border"),
+            ("isnoshadow", "No shadow"),
+            ("isnoradius", "No corner radius"),
+            ("isnoanimation", "No animation"),
+            ("noopenmaximized", "Do not open maximized"),
+            ("force_tiled_state", "Force tiled state"),
+            ("allow_csd", "Allow client-side decoration"),
+        ]
+        for i, (key, label) in enumerate(toggle_defs):
+            cb = QCheckBox(label)
+            self.window_rule_toggles[key] = cb
+            toggles.addWidget(cb, i // 2, i % 2)
+        editor.addLayout(toggles)
+
+        self.window_rule_appid.textChanged.connect(lambda _="": self.build_window_rule_line())
+        self.window_rule_title.textChanged.connect(lambda _="": self.build_window_rule_line())
+        self.window_rule_preview = QLabel()
+        self.window_rule_preview.setObjectName("pageSub")
+        self.window_rule_preview.setWordWrap(True)
+        editor.addWidget(self.window_rule_preview)
+        self.add_page_actions(page, [
+            ("Refresh Rules", self.refresh_window_rules, False, "Reload window rules and focused-window info from the current Mango config/session."),
+            ("Remove Selected Rule", self.remove_selected_window_rule, False, "Remove the selected windowrule entry from the in-memory list."),
+            ("Add or Replace Rule", self.add_or_replace_window_rule, True, "Add a new Mango window rule or replace an existing one with the same app ID/title match."),
+            ("Save Window Rules", self.save_window_rules, True, "Back up Mango config, write all window rules, and reload Mango."),
+        ])
+        return page
+
     def page_startup(self) -> QWidget:
         page, layout = self.make_page(
             "Startup",
@@ -1845,6 +1959,7 @@ class MainWindow(QMainWindow):
         self.refresh_controls()
         self.refresh_keyboard_specials()
         self.refresh_keybindings()
+        self.refresh_window_rules()
         self.refresh_startup()
         self.refresh_services()
         self.refresh_portals()
@@ -2144,6 +2259,211 @@ class MainWindow(QMainWindow):
             self.say(f"FAIL: Could not save keybindings: {exc}")
             return
         self.say(f"Saved keybindings. Backup: {backup}")
+        self.reload_mango()
+
+    def focused_window_rule_target(self) -> dict[str, str]:
+        code, out = run_cmd(["mmsg", "-g", "-c"], timeout=8)
+        info = {"appid": "", "title": ""}
+        if code != 0:
+            return info
+        for line in out.splitlines():
+            parts = line.split(" ", 2)
+            if len(parts) < 3:
+                continue
+            kind = parts[1].strip()
+            value = parts[2].strip()
+            if kind == "appid":
+                info["appid"] = value
+            elif kind == "title":
+                info["title"] = value
+        return info
+
+    def parse_window_rule_line(self, line: str) -> dict[str, str]:
+        raw = line.strip()
+        if raw.startswith("windowrule="):
+            raw = raw.split("=", 1)[1]
+        data: dict[str, str] = {"__raw": raw}
+        for part in raw.split(","):
+            if ":" not in part:
+                continue
+            key, value = part.split(":", 1)
+            data[key.strip()] = value.strip()
+        return data
+
+    def build_window_rule_line(self) -> str | None:
+        appid = self.window_rule_appid.text().strip() if hasattr(self, "window_rule_appid") else ""
+        title = self.window_rule_title.text().strip() if hasattr(self, "window_rule_title") else ""
+        if not appid and not title:
+            self.say("FAIL: Window rule needs at least an App ID or Title match.")
+            return None
+        parts: list[str] = []
+        if hasattr(self, "window_rule_enable_focused_opacity") and self.window_rule_enable_focused_opacity.isChecked():
+            parts.append(f"focused_opacity:{self.window_rule_focused_opacity.value()/100:.2f}")
+        if hasattr(self, "window_rule_enable_unfocused_opacity") and self.window_rule_enable_unfocused_opacity.isChecked():
+            parts.append(f"unfocused_opacity:{self.window_rule_unfocused_opacity.value()/100:.2f}")
+        for key, widget in getattr(self, "window_rule_toggles", {}).items():
+            if widget.isChecked():
+                parts.append(f"{key}:1")
+        if appid:
+            parts.append(f"appid:{appid}")
+        if hasattr(self, "window_rule_enable_title") and self.window_rule_enable_title.isChecked() and title:
+            parts.append(f"title:{title}")
+        line = "windowrule=" + ",".join(parts)
+        if hasattr(self, "window_rule_preview"):
+            self.window_rule_preview.setText(line)
+        return line
+
+    def refresh_focused_window_rule_target(self) -> None:
+        if not hasattr(self, "window_rule_focus_label"):
+            return
+        info = self.focused_window_rule_target()
+        if info.get("appid") or info.get("title"):
+            self.window_rule_focus_label.setText(
+                f"Focused app ID: {info.get('appid') or 'unknown'}\nFocused title: {info.get('title') or 'unknown'}"
+            )
+        else:
+            self.window_rule_focus_label.setText("Could not read focused window from Mango. Focus the target app and try again.")
+
+    def apply_window_rule_target(self, info: dict[str, str]) -> None:
+        if hasattr(self, "window_rule_appid"):
+            self.window_rule_appid.setText(info.get("appid", ""))
+        if hasattr(self, "window_rule_title"):
+            self.window_rule_title.setText(info.get("title", ""))
+        if hasattr(self, "window_rule_enable_title"):
+            self.window_rule_enable_title.setChecked(False)
+        self.refresh_focused_window_rule_target()
+        self.build_window_rule_line()
+        self.say(f"Captured window: {info.get('appid') or info.get('title')}")
+
+    def use_focused_window_for_rule(self) -> None:
+        info = self.focused_window_rule_target()
+        if not info.get("appid") and not info.get("title"):
+            self.say("FAIL: Could not capture focused window.")
+            return
+        self.apply_window_rule_target(info)
+
+    def capture_window_rule_target_delayed(self) -> None:
+        if hasattr(self, "window_rule_focus_label"):
+            self.window_rule_focus_label.setText("Capture started. Switch to the target app now — this settings window will hide and capture in 3 seconds.")
+        self.hide()
+        def finish_capture() -> None:
+            info = self.focused_window_rule_target()
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            if not info.get("appid") and not info.get("title"):
+                self.say("FAIL: Delayed capture could not read the target window.")
+                self.refresh_focused_window_rule_target()
+                return
+            self.apply_window_rule_target(info)
+        QTimer.singleShot(3000, finish_capture)
+
+    def refresh_window_rules(self) -> None:
+        self.refresh_focused_window_rule_target()
+        if not hasattr(self, "window_rules_list"):
+            return
+        self.window_rules_list.clear()
+        for line in self.cfg.text.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("windowrule="):
+                continue
+            data = self.parse_window_rule_line(stripped)
+            label_parts = []
+            if data.get("appid"):
+                label_parts.append(f"appid={data['appid']}")
+            if data.get("title"):
+                label_parts.append(f"title={data['title']}")
+            if data.get("focused_opacity"):
+                label_parts.append(f"focus={data['focused_opacity']}")
+            if data.get("unfocused_opacity"):
+                label_parts.append(f"unfocus={data['unfocused_opacity']}")
+            label = " | ".join(label_parts) if label_parts else stripped
+            item = QListWidgetItem(label)
+            item.setData(Qt.ItemDataRole.UserRole, stripped)
+            self.window_rules_list.addItem(item)
+        self.build_window_rule_line()
+
+    def load_selected_window_rule(self, item: QListWidgetItem) -> None:
+        data = self.parse_window_rule_line(str(item.data(Qt.ItemDataRole.UserRole)))
+        self.window_rule_appid.setText(data.get("appid", ""))
+        self.window_rule_title.setText(data.get("title", ""))
+        self.window_rule_enable_title.setChecked(bool(data.get("title", "")))
+        focused = data.get("focused_opacity", "")
+        unfocused = data.get("unfocused_opacity", "")
+        self.window_rule_enable_focused_opacity.setChecked(bool(focused))
+        self.window_rule_enable_unfocused_opacity.setChecked(bool(unfocused))
+        if focused:
+            with contextlib.suppress(ValueError):
+                self.window_rule_focused_opacity.setValue(int(float(focused) * 100))
+        if unfocused:
+            with contextlib.suppress(ValueError):
+                self.window_rule_unfocused_opacity.setValue(int(float(unfocused) * 100))
+        for key, widget in self.window_rule_toggles.items():
+            widget.setChecked(data.get(key) == "1")
+        self.build_window_rule_line()
+
+    def add_or_replace_window_rule(self) -> None:
+        line = self.build_window_rule_line()
+        if not line or not hasattr(self, "window_rules_list"):
+            return
+        new_data = self.parse_window_rule_line(line)
+        replace_row = None
+        for i in range(self.window_rules_list.count()):
+            item = self.window_rules_list.item(i)
+            old_data = self.parse_window_rule_line(str(item.data(Qt.ItemDataRole.UserRole)))
+            if old_data.get("appid", "") == new_data.get("appid", "") and old_data.get("title", "") == new_data.get("title", ""):
+                replace_row = i
+                break
+        label_parts = []
+        if new_data.get("appid"):
+            label_parts.append(f"appid={new_data['appid']}")
+        if new_data.get("title"):
+            label_parts.append(f"title={new_data['title']}")
+        if new_data.get("focused_opacity"):
+            label_parts.append(f"focus={new_data['focused_opacity']}")
+        if new_data.get("unfocused_opacity"):
+            label_parts.append(f"unfocus={new_data['unfocused_opacity']}")
+        item = QListWidgetItem(" | ".join(label_parts) if label_parts else line)
+        item.setData(Qt.ItemDataRole.UserRole, line)
+        if replace_row is None:
+            self.window_rules_list.addItem(item)
+            self.say("Added window rule to pending list.")
+        else:
+            self.window_rules_list.takeItem(replace_row)
+            self.window_rules_list.insertItem(replace_row, item)
+            self.say("Replaced existing window rule in pending list.")
+
+    def remove_selected_window_rule(self) -> None:
+        if not hasattr(self, "window_rules_list"):
+            return
+        selected = self.window_rules_list.selectedItems()
+        if not selected:
+            self.say("No window rule selected.")
+            return
+        for item in selected:
+            self.window_rules_list.takeItem(self.window_rules_list.row(item))
+        self.say("Removed selected window rule from pending list.")
+
+    def save_window_rules(self) -> None:
+        if not hasattr(self, "window_rules_list"):
+            return
+        if QMessageBox.question(self, "Save window rules", "Backup Mango config and save window rule changes?") != QMessageBox.StandardButton.Yes:
+            return
+        rules = [str(self.window_rules_list.item(i).data(Qt.ItemDataRole.UserRole)) for i in range(self.window_rules_list.count())]
+        self.cfg.remove_matching(r"^\s*windowrule=")
+        marker = "# layer rule"
+        block = ("\n".join(rules) + "\n") if rules else ""
+        if marker in self.cfg.text:
+            idx = self.cfg.text.find(marker)
+            self.cfg.text = self.cfg.text[:idx].rstrip() + "\n\n" + block + self.cfg.text[idx:]
+        elif block:
+            self.cfg.text = self.cfg.text.rstrip() + "\n\n" + block
+        try:
+            backup = self.cfg.save()
+        except Exception as exc:
+            self.say(f"FAIL: Could not save window rules: {exc}")
+            return
+        self.say(f"Saved window rules. Backup: {backup}")
         self.reload_mango()
 
     def refresh_portals(self) -> None:

@@ -116,6 +116,8 @@ apply_files() {
 
   install_file "$ROOT/scripts/dms-mango-post-startup" \
     "$HOME/.local/bin/dms-mango-post-startup" 0755
+  install_file "$ROOT/scripts/apply-dms-launch-overrides" \
+    "$HOME/.local/bin/apply-dms-launch-overrides" 0755
 
   install_file "$ROOT/configs/dms-kde-workstation/startup.json" \
     "$HOME/.config/dms-kde-workstation/startup.json" 0644
@@ -138,6 +140,8 @@ apply_user_actions() {
   if command -v systemctl >/dev/null 2>&1; then
     run systemctl --user restart xdg-desktop-portal.service xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service
   fi
+
+  run "$HOME/.local/bin/apply-dms-launch-overrides"
 
   if [ "$APPLY_OBSIDIAN_OVERRIDE" -eq 1 ]; then
     if command -v flatpak >/dev/null 2>&1 && flatpak info md.obsidian.Obsidian >/dev/null 2>&1; then
