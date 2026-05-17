@@ -16,11 +16,11 @@ from pathlib import Path
 
 from PySide6.QtCore import QPointF, Qt, QTimer
 from PySide6.QtGui import QAction, QColor, QFont, QIcon, QPainter, QPainterPath, QPen, QPixmap
+from PySide6.QtNetwork import QLocalSocket
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
-    QCompleter,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -46,7 +46,33 @@ PROJECT = HOME / "dms-kde-workstation"
 MANGO_CONFIG = HOME / ".config/mango/config.conf"
 BACKUP_ROOT = HOME / ".local/state/dms-kde-workstation/backups"
 HEALTH_SCRIPT = PROJECT / "scripts/dms-workstation-health"
+APPLY_BASELINE_SCRIPT = PROJECT / "scripts/apply-mango-baseline"
 STARTUP_JSON = HOME / ".config/dms-kde-workstation/startup.json"
+QT_ENV_FILE = HOME / ".config/environment.d/90-dms-kde-qt.conf"
+PORTAL_OVERRIDE = HOME / ".config/systemd/user/xdg-desktop-portal.service"
+PORTAL_CONFIG = HOME / ".config/xdg-desktop-portal/mango-portals.conf"
+SETTINGS_BIN = HOME / ".local/bin/dms-mango-settings"
+SETTINGS_AUTOSTART = HOME / ".config/autostart/dms-mango-settings.desktop"
+POST_STARTUP_HELPER = HOME / ".local/bin/dms-mango-post-startup"
+CONSOLIDATE_SCRIPT = HOME / ".local/lib/dms-kde-workstation/sddm-consolidate-autologin.py"
+POLKIT_POLICY = Path("/usr/share/polkit-1/actions/io.dms-kde-workstation.sddm-autologin.policy")
+
+PORTAL_PACKAGES = [
+    ("xdg-desktop-portal", "Core portal framework"),
+    ("xdg-desktop-portal-wlr", "Wayland portal backend"),
+    ("xdg-desktop-portal-gtk", "GTK portal backend"),
+    ("xdg-desktop-portal-kde", "KDE portal backend"),
+]
+
+ENV_REQUIRED_VARS = {
+    "WAYLAND_DISPLAY": "wayland-1",
+    "XDG_CURRENT_DESKTOP": "mango",
+    "XDG_SESSION_TYPE": "wayland",
+    "XDG_SESSION_DESKTOP": "mango",
+    "QT_QPA_PLATFORM": "wayland",
+    "QT_QPA_PLATFORMTHEME": "qt6ct",
+    "QT_QPA_PLATFORMTHEME_QT6": "qt6ct",
+}
 
 
 def rgb_to_hex(value: str, fallback: str) -> str:
@@ -366,57 +392,150 @@ class BezierCurveEditor(QWidget):
         self.value_label.setText(f"Curve: {self.text()}")
 
 
-class SearchCombo(QComboBox):
-    """An editable QComboBox with inline search/autocomplete and limited popup size."""
-
-    MAX_VISIBLE = 15
+class SearchCombo(QWidget):
+    """Dropdown with search-on-open: click to open a popup with search + filtered list."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMinimumWidth(330)
-        self.setEditable(True)
-        self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.setMaxVisibleItems(self.MAX_VISIBLE)
-        completer = QCompleter()
-        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-        completer.setFilterMode(Qt.MatchFlag.MatchContains)
-        completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
-        self.setCompleter(completer)
-        self.view().setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
-        self.view().setMaximumHeight(400)
-        self._all_items: list[tuple[str, str]] = []
+        self._items: list[tuple[str, str]] = []  # [(display, data), ...]
+        self._current_data = ""
+        self._current_text = ""
+
+        # The button that looks like a dropdown
+        self._btn = QPushButton(self)
+        self._btn.setObjectName("searchComboBtn")
+        self._btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn.clicked.connect(self._toggle_popup)
+        self._btn.setStyleSheet(f"""
+            QPushButton#searchComboBtn {{
+                background: {FIELD}; color: {TEXT}; border: 1px solid {BORDER};
+                border-radius: 12px; padding: 9px 30px 9px 12px; min-height: 24px;
+                text-align: left; font-size: 15px;
+            }}
+            QPushButton#searchComboBtn:hover {{ border-color: {ACCENT}; }}
+        """)
+
+        # The popup frame with dark theme
+        self._popup = QFrame(None, Qt.WindowType.Popup)
+        self._popup.setObjectName("searchComboPopup")
+        self._popup.setStyleSheet(f"""
+            QFrame#searchComboPopup {{
+                background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 14px;
+            }}
+            QLineEdit {{
+                background: {BG}; color: {TEXT}; border: 1px solid {BORDER};
+                border-radius: 10px; padding: 8px 12px; font-size: 14px;
+            }}
+            QListWidget {{
+                background: {SURFACE}; color: {TEXT}; border: none; outline: none; font-size: 14px;
+            }}
+            QListWidget::item {{ padding: 8px 12px; border-radius: 8px; }}
+            QListWidget::item:selected {{ background: {ACCENT}; color: {ACCENT_TEXT}; }}
+            QListWidget::item:hover {{ background: {FIELD}; }}
+            QScrollBar:vertical {{ width: 10px; background: transparent; }}
+            QScrollBar::handle:vertical {{ background: {BORDER}; border-radius: 5px; min-height: 20px; }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
+        """)
+        popup_layout = QVBoxLayout(self._popup)
+        popup_layout.setContentsMargins(6, 6, 6, 6)
+        popup_layout.setSpacing(4)
+        self._search = QLineEdit()
+        self._search.setPlaceholderText("Search...")
+        self._search.textChanged.connect(self._filter_items)
+        popup_layout.addWidget(self._search)
+        self._list = QListWidget()
+        self._list.setMaximumHeight(320)
+        self._list.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self._list.itemClicked.connect(self._pick_item)
+        popup_layout.addWidget(self._list)
+
+        # Arrow indicator overlay
+        self._arrow = QLabel("\u25BE", self)
+        self._arrow.setStyleSheet(f"color: {MUTED}; font-size: 16px; background: transparent;")
+        self._arrow.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._btn.setGeometry(0, 0, self.width(), self.height())
+        self._arrow.move(self.width() - 26, (self.height() - self._arrow.height()) // 2)
+
+    def _toggle_popup(self) -> None:
+        if self._popup.isVisible():
+            self._popup.hide()
+            return
+        self._rebuild_list()
+        self._search.clear()
+        # Position popup below this widget
+        pos = self.mapToGlobal(self.rect().bottomLeft())
+        # Adjust if it would go off-screen
+        screen = self.screen().availableGeometry() if self.screen() else self.rect()
+        w = max(self.width(), 300)
+        self._popup.setFixedWidth(w)
+        self._popup.move(pos)
+        self._popup.show()
+        self._search.setFocus()
+
+    def _rebuild_list(self, filt: str = "") -> None:
+        self._list.clear()
+        low = filt.lower()
+        for display, data in self._items:
+            if not low or low in display.lower() or low in data.lower():
+                item = QListWidgetItem(display)
+                item.setData(Qt.ItemDataRole.UserRole, data)
+                self._list.addItem(item)
+        # Highlight current
+        for i in range(self._list.count()):
+            if self._list.item(i).data(Qt.ItemDataRole.UserRole) == self._current_data:
+                self._list.setCurrentRow(i)
+                self._list.scrollToItem(self._list.item(i))
+                break
+
+    def _filter_items(self, text: str) -> None:
+        self._rebuild_list(text)
+
+    def _pick_item(self, item: QListWidgetItem) -> None:
+        data = item.data(Qt.ItemDataRole.UserRole) or ""
+        display = item.text()
+        self._current_data = data
+        self._current_text = display
+        self._btn.setText(display)
+        self._popup.hide()
+
+    def _update_btn_text(self) -> None:
+        for display, data in self._items:
+            if data == self._current_data:
+                self._btn.setText(display)
+                return
+        self._btn.setText(self._current_text or "Select...")
 
     def add_item(self, display: str, data: str) -> None:
-        self._all_items.append((display, data))
-        self.addItem(display, data)
-        if self.completer() and self.completer().model():
-            self.completer().model().setStringList([d for d, _ in self._all_items])
+        self._items.append((display, data))
+        if not self._current_data:
+            self._current_data = data
+            self._current_text = display
+        self._update_btn_text()
 
     def clear_items(self) -> None:
-        self._all_items.clear()
-        self.clear()
-        if self.completer() and self.completer().model():
-            self.completer().model().setStringList([])
+        self._items.clear()
+        self._current_data = ""
+        self._current_text = ""
+        self._btn.setText("Select...")
 
     def current_data(self) -> str:
-        idx = self.currentIndex()
-        if idx >= 0 and self.itemData(idx):
-            return self.itemData(idx) or ""
-        text = self.currentText()
-        for display, data in self._all_items:
-            if display == text:
-                return data
-        return ""
+        return self._current_data
 
     def set_current_data(self, data: str) -> None:
-        idx = self.findData(data)
-        if idx >= 0:
-            self.setCurrentIndex(idx)
-        else:
-            self.setCurrentIndex(0)
+        self._current_data = data
+        for display, d in self._items:
+            if d == data:
+                self._current_text = display
+                break
+        self._update_btn_text()
 
     def block_signals(self, block: bool) -> None:
-        self.blockSignals(block)
+        pass
+
 
 class SettingRow(QFrame):
     def __init__(self, title: str, subtitle: str = ""):
@@ -472,11 +591,13 @@ class MainWindow(QMainWindow):
 
         self.pages = [
             ("⚙", "Overview", self.page_overview),
+            ("★", "First Run Setup", self.page_first_run),
             ("▣", "Layout & Scroller", self.page_layout),
             ("✨", "Animations & Effects", self.page_animation),
             ("🖱", "Input", self.page_input),
             ("⌨", "Keyboard", self.page_keyboard),
             ("⌘", "Keybindings", self.page_keybindings),
+            ("▥", "Window Rules", self.page_window_rules),
             ("🚀", "Startup", self.page_startup),
             ("●", "Services", self.page_services),
             ("◉", "Portals", self.page_portals),
@@ -495,6 +616,7 @@ class MainWindow(QMainWindow):
             self.stack.addWidget(builder())
         self.sidebar.currentRowChanged.connect(self.stack.setCurrentIndex)
         self.sidebar.setCurrentRow(0)
+        self.login_page_index = next((i for i, (_, n, _) in enumerate(self.pages) if n == "Login"), 0)
 
         refresh = QAction("Refresh", self)
         refresh.triggered.connect(self.refresh_all)
@@ -536,6 +658,17 @@ class MainWindow(QMainWindow):
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
             self._tray_show()
 
+    def _handle_single_instance(self, server) -> None:
+        """Handle a second instance trying to start — bring window to front."""
+        socket = server.nextPendingConnection()
+        if socket:
+            socket.waitForReadyRead(1000)
+            socket.readAll()
+            socket.disconnectFromServer()
+        self._tray_show()
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            self._tray_show()
+
     def _tray_show(self) -> None:
         self.show()
         self.raise_()
@@ -563,6 +696,7 @@ class MainWindow(QMainWindow):
             #sidebar::item:selected {{ background: {ACCENT}; color: {ACCENT_TEXT}; }}
             #sidebar::item:hover:!selected {{ background: {SURFACE}; }}
             #stack {{ background: {BG}; }}
+            #pageActions {{ background: {BG}; border-top: 1px solid {BORDER}; padding: 14px 34px; }}
             #pageTitle {{ font-size: 31px; font-weight: 650; color: {TEXT}; margin-bottom: 4px; }}
             #pageSub {{ color: {MUTED}; font-size: 15px; }}
             #card {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 18px; }}
@@ -577,7 +711,15 @@ class MainWindow(QMainWindow):
             QPushButton:hover {{ background: {BUTTON_HOVER}; }}
             QPushButton#primary {{ background: {ACCENT}; color: {ACCENT_TEXT}; border-color: {ACCENT}; font-weight: 650; }}
             QComboBox, QLineEdit {{ background: {FIELD}; color: {TEXT}; border: 1px solid {BORDER}; border-radius: 12px; padding: 9px 12px; min-height: 24px; }}
-            QComboBox::drop-down {{ border: none; width: 28px; }}
+            QComboBox QAbstractItemView {{ background: {SURFACE}; color: {TEXT}; border: 1px solid {BORDER}; border-radius: 10px; selection-background-color: {ACCENT}; selection-color: {ACCENT_TEXT}; outline: none; }}
+            #searchComboBtn {{ background: {FIELD}; color: {TEXT}; border: 1px solid {BORDER}; border-radius: 12px; padding: 9px 12px; min-height: 24px; text-align: left; padding-right: 30px; }}
+            #searchComboBtn:hover {{ border-color: {ACCENT}; }}
+            #searchComboPopup {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 14px; }}
+            #searchComboPopup QLineEdit {{ background: {BG}; color: {TEXT}; border: 1px solid {BORDER}; border-radius: 10px; padding: 8px 12px; }}
+            #searchComboPopup QListWidget {{ background: {SURFACE}; color: {TEXT}; border: none; outline: none; }}
+            #searchComboPopup QListWidget::item {{ padding: 8px 12px; border-radius: 8px; }}
+            #searchComboPopup QListWidget::item:selected {{ background: {ACCENT}; color: {ACCENT_TEXT}; }}
+            #searchComboPopup QListWidget::item:hover {{ background: {FIELD}; }}
             QSlider::groove:horizontal {{ height: 6px; background: {BORDER}; border-radius: 3px; }}
             QSlider::sub-page:horizontal {{ background: {ACCENT}; border-radius: 3px; }}
             QSlider::handle:horizontal {{ width: 20px; height: 20px; margin: -8px 0; border-radius: 10px; background: {TEXT}; }}
@@ -589,7 +731,7 @@ class MainWindow(QMainWindow):
     def make_page(self, title: str, subtitle: str) -> tuple[QWidget, QVBoxLayout]:
         outer = QWidget()
         outer_layout = QVBoxLayout(outer)
-        outer_layout.setContentsMargins(34, 28, 34, 28)
+        outer_layout.setContentsMargins(34, 28, 34, 0)
         outer_layout.setSpacing(20)
         header = QLabel(title)
         header.setObjectName("pageTitle")
@@ -606,6 +748,8 @@ class MainWindow(QMainWindow):
         layout.setSpacing(22)
         scroll.setWidget(content)
         outer_layout.addWidget(scroll, 1)
+        outer._page_outer_layout = outer_layout
+        outer._page_footer = None
         return outer, layout
 
     def card(self, layout: QVBoxLayout, title: str, subtitle: str = "") -> QVBoxLayout:
@@ -625,6 +769,35 @@ class MainWindow(QMainWindow):
             box.addSpacing(10)
         layout.addWidget(frame)
         return box
+
+    def action_button(self, text: str, action, primary: bool = False, tooltip: str = "") -> QPushButton:
+        btn = QPushButton(text)
+        if primary:
+            btn.setObjectName("primary")
+        if tooltip:
+            btn.setToolTip(tooltip)
+            btn.setStatusTip(tooltip)
+        btn.clicked.connect(action)
+        return btn
+
+    def add_page_actions(self, page: QWidget, actions: list[tuple[str, object, bool, str]]) -> None:
+        outer_layout = getattr(page, "_page_outer_layout", None)
+        if outer_layout is None:
+            return
+        footer = getattr(page, "_page_footer", None)
+        if footer is not None:
+            outer_layout.removeWidget(footer)
+            footer.deleteLater()
+        footer = QFrame()
+        footer.setObjectName("pageActions")
+        row = QHBoxLayout(footer)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(10)
+        for text, action, primary, tooltip in actions:
+            row.addWidget(self.action_button(text, action, primary, tooltip))
+        row.addStretch(1)
+        outer_layout.addWidget(footer)
+        page._page_footer = footer
 
     def row(
         self, parent: QVBoxLayout, title: str, subtitle: str, control: QWidget
@@ -696,25 +869,108 @@ class MainWindow(QMainWindow):
             w.setObjectName("rowTitle")
             c.addWidget(w)
         c.addSpacing(14)
-        row = QHBoxLayout()
-        for text, action, primary in [
-            ("Run health check", self.run_health, True),
-            ("Reload Mango", self.reload_mango, False),
-            ("Open project", lambda: self.open_folder(str(PROJECT)), False),
-        ]:
-            btn = QPushButton(text)
-            if primary:
-                btn.setObjectName("primary")
-            btn.clicked.connect(action)
-            row.addWidget(btn)
-        row.addStretch(1)
-        c.addLayout(row)
+        log_card = self.card(layout, "Activity Log", "Output from setup actions. Text is selectable for copy/paste.")
         self.log_box = QTextEdit("Ready.")
         self.log_box.setReadOnly(True)
-        self.log_box.setMaximumHeight(180)
+        self.log_box.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.TextSelectableByKeyboard
+        )
+        self.log_box.setMinimumHeight(280)
         self.log_box.setObjectName("logBox")
-        c.addWidget(self.log_box)
+        log_card.addWidget(self.log_box)
+        self.status_label = QLabel("")
+        self.status_label.setObjectName("pageSub")
+        self.status_label.setStyleSheet(f"color: {MUTED};")
+        log_card.addWidget(self.status_label)
+        self.add_page_actions(page, [
+            ("Run Health Check", self.run_health, True, "Run the workstation verification script and show the results here."),
+            ("Reload Mango", self.reload_mango, False, "Reload Mango config without logging out."),
+            ("Open Project Folder", lambda: self.open_folder(str(PROJECT)), False, "Open the dms-kde-workstation project folder in Dolphin."),
+        ])
         layout.addStretch(1)
+        return page
+
+    def _first_run_row(self, parent: QVBoxLayout, title: str, subtitle: str, action_text: str, action, primary: bool = False) -> QLabel:
+        """Create a dashboard row with title/subtitle, status label, and action button. Returns the status QLabel."""
+        row = SettingRow(title, subtitle)
+        status = QLabel("Checking...")
+        status.setObjectName("rowSub")
+        row.box.addWidget(status)
+        if action_text:
+            btn = self.action_button(action_text, action, primary)
+            row.box.addWidget(btn)
+        parent.addWidget(row)
+        return status
+
+    def page_first_run(self) -> QWidget:
+        page, layout = self.make_page(
+            "First Run Setup",
+            "System-level workstation setup. Each row shows its current status and has its own fix action. Use the buttons below for bulk operations.",
+        )
+
+        self.first_run_rows: dict[str, QLabel] = {}
+
+        overall = self.card(layout, "Status")
+        self.first_run_overall_label = QLabel("Checking...")
+        self.first_run_overall_label.setStyleSheet(f"color: {WARNING}; font-weight: 650; font-size: 18px;")
+        overall.addWidget(self.first_run_overall_label)
+
+        env_card = self.card(layout, "System Environment", "Session and display variables via environment.d")
+        self.first_run_rows["env"] = self._first_run_row(
+            env_card, "Environment variables", "WAYLAND_DISPLAY, XDG_CURRENT_DESKTOP, QT_QPA_PLATFORM, etc.",
+            "Fix Environment", self.fix_environment, primary=True,
+        )
+
+        portal_card = self.card(layout, "Portal Packages", "Required xdg-desktop-portal backends")
+        self.first_run_rows["portals"] = self._first_run_row(
+            portal_card, "Portal RPMs", "xdg-desktop-portal, wlr, gtk, kde",
+            "Install Missing", self.install_portals, primary=True,
+        )
+
+        baseline_card = self.card(layout, "Baseline Files", "Core workstation config and helpers")
+        self.first_run_rows["baseline"] = self._first_run_row(
+            baseline_card, "Baseline deployed", "Mango config, portal overrides, helpers",
+            "Apply Baseline", self.first_run_apply_baseline, primary=True,
+        )
+        self.first_run_rows["dms_startup"] = self._first_run_row(
+            baseline_card, "DMS startup in Mango", "exec-once with qt6ct env",
+            "", lambda: None,
+        )
+
+        login_card = self.card(layout, "Login / Autologin", "SDDM autologin to Mango session")
+        self.first_run_rows["login"] = self._first_run_row(
+            login_card, "Autologin", "SDDM auto-login session and user",
+            "Fix Login", self.first_run_fix_login, primary=True,
+        )
+        self.first_run_rows["script"] = self._first_run_row(
+            login_card, "Autologin script", "sddm-consolidate-autologin.py deployed",
+            "", lambda: None,
+        )
+
+        theme_card = self.card(layout, "Theme", "DMS Matugen export status")
+        self.first_run_rows["theme"] = self._first_run_row(
+            theme_card, "DMS Theme export", "GTK3/4 + QT5/6 colors exported once",
+            "Open DMS Theme", lambda: self.detach(["dms", "run", "--config-module", "theme"]),
+        )
+
+        note = QLabel(
+            "Manual steps still required:\n"
+            "• Install Mango itself\n"
+            "• Install DMS itself\n"
+            "• Export DMS Theme/Colors at least once"
+        )
+        note.setObjectName("pageSub")
+        note.setWordWrap(True)
+        layout.addWidget(note)
+        layout.addStretch(1)
+
+        self.add_page_actions(page, [
+            ("Refresh Status", self.refresh_first_run, False, "Re-check all system-level items."),
+            ("Dry-Run Baseline", self.dry_run_first_run_setup, False, "Preview what the baseline installer would change."),
+            ("Apply Full Baseline", self.first_run_apply_baseline, True, "Deploy all user-level config files and helpers."),
+            ("Run Health Check", self.run_health, False, "Run the workstation verification script."),
+        ])
         return page
 
     def page_layout(self) -> QWidget:
@@ -836,10 +1092,10 @@ class MainWindow(QMainWindow):
             ("border_radius", "Border radius", 48),
         ]:
             self.row(appearance, label, key, self.slider(key, 0, maxv, " px"))
-        save = QPushButton("Save layout settings")
-        save.setObjectName("primary")
-        save.clicked.connect(self.save_layout)
-        appearance.addWidget(save, 0, Qt.AlignmentFlag.AlignRight)
+        self.add_page_actions(page, [
+            ("Apply Active Layout", self.set_active_layout, False, "Send the selected layout to Mango immediately for the current monitor."),
+            ("Save Layout Settings", self.save_layout, True, "Back up Mango config and save layout, scroller, gap, and border settings."),
+        ])
         return page
 
     def page_animation(self) -> QWidget:
@@ -932,10 +1188,10 @@ class MainWindow(QMainWindow):
         for key, label in self.animation_curve_keys():
             self.row(curves, label, key, self.curve_editor(key))
 
-        save = QPushButton("Save animation/effects settings")
-        save.setObjectName("primary")
-        save.clicked.connect(self.save_effects)
-        anim.addWidget(save, 0, Qt.AlignmentFlag.AlignRight)
+        self.add_page_actions(page, [
+            ("Apply Curve Preset", self.apply_animation_curve_preset, False, "Fill all curve fields with the selected preset. Save afterwards to write it to Mango config."),
+            ("Save Animations & Effects", self.save_effects, True, "Back up Mango config and save animation, blur, shadow, and opacity settings."),
+        ])
         return page
 
     def page_input(self) -> QWidget:
@@ -984,10 +1240,9 @@ class MainWindow(QMainWindow):
             "swipe_min_threshold",
             self.slider("swipe_min_threshold", 0, 20),
         )
-        save = QPushButton("Save input settings")
-        save.setObjectName("primary")
-        save.clicked.connect(lambda: self.save_keys(self.input_keys(), "input"))
-        t.addWidget(save, 0, Qt.AlignmentFlag.AlignRight)
+        self.add_page_actions(page, [
+            ("Save Input Settings", lambda: self.save_keys(self.input_keys(), "input"), True, "Back up Mango config and save mouse, pointer, and trackpad settings."),
+        ])
         return page
 
     def page_keyboard(self) -> QWidget:
@@ -1024,10 +1279,9 @@ class MainWindow(QMainWindow):
             "English/Greek direct selection",
             self.direct_layouts,
         )
-        save = QPushButton("Save keyboard settings")
-        save.setObjectName("primary")
-        save.clicked.connect(self.save_keyboard)
-        c.addWidget(save, 0, Qt.AlignmentFlag.AlignRight)
+        self.add_page_actions(page, [
+            ("Save Keyboard Settings", self.save_keyboard, True, "Back up Mango config and save keyboard layouts, repeat settings, and layout shortcuts."),
+        ])
         return page
 
     def page_keybindings(self) -> QWidget:
@@ -1040,19 +1294,6 @@ class MainWindow(QMainWindow):
         self.keybinds_list.setMinimumHeight(260)
         self.keybinds_list.itemClicked.connect(self.load_selected_keybinding_into_editor)
         c.addWidget(self.keybinds_list)
-        row = QHBoxLayout()
-        for text, action, primary in [
-            ("Remove selected", self.remove_selected_keybinding, False),
-            ("Save keybindings", self.save_keybindings, True),
-            ("Open Mango config", lambda: self.open_text_file(MANGO_CONFIG), False),
-        ]:
-            btn = QPushButton(text)
-            if primary:
-                btn.setObjectName("primary")
-            btn.clicked.connect(action)
-            row.addWidget(btn)
-        row.addStretch(1)
-        c.addLayout(row)
         self.keybind_duplicate_label = QLabel()
         self.keybind_duplicate_label.setObjectName("pageSub")
         self.keybind_duplicate_label.setWordWrap(True)
@@ -1138,116 +1379,151 @@ class MainWindow(QMainWindow):
         adv_row.addWidget(adv_btn)
         adv_row.addStretch(1)
         advanced.addLayout(adv_row)
+        self.add_page_actions(page, [
+            ("Remove Selected Shortcut", self.remove_selected_keybinding, False, "Remove the currently selected shortcut from Mango config."),
+            ("Open Mango Config", lambda: self.open_text_file(MANGO_CONFIG), False, "Open the raw Mango config in your default editor."),
+            ("Save Keybindings", self.save_keybindings, True, "Back up Mango config and save the current shortcut list."),
+        ])
+        return page
+
+    def page_window_rules(self) -> QWidget:
+        page, layout = self.make_page(
+            "Window Rules",
+            "Per-app Mango window rules. Match by app ID and/or title, then apply opacity, floating, blur, decoration, and behavior rules to that app only.",
+        )
+
+        current = self.card(
+            layout,
+            "Current rules",
+            "These are the windowrule= lines currently present in your Mango config.",
+        )
+        self.window_rules_list = QListWidget()
+        self.window_rules_list.setMinimumHeight(220)
+        self.window_rules_list.itemClicked.connect(self.load_selected_window_rule)
+        current.addWidget(self.window_rules_list)
+
+        inspect = self.card(
+            layout,
+            "Focused window inspector",
+            "Mango only exposes the focused window directly. Use delayed capture so this settings app gets out of the way first.",
+        )
+        self.window_rule_focus_label = QLabel()
+        self.window_rule_focus_label.setObjectName("pageSub")
+        self.window_rule_focus_label.setWordWrap(True)
+        inspect.addWidget(self.window_rule_focus_label)
+        inspect_row = QHBoxLayout()
+        inspect_row.addWidget(self.action_button("Refresh Focused Window", self.refresh_focused_window_rule_target, False, "Query Mango for the currently focused window title and app ID."))
+        inspect_row.addWidget(self.action_button("Capture After 3 Seconds", self.capture_window_rule_target_delayed, True, "Hide this app, switch to the target app, then capture its app ID and title after 3 seconds."))
+        inspect_row.addWidget(self.action_button("Use Focused Window Now", self.use_focused_window_for_rule, False, "Copy the currently focused window title and app ID into the editor below immediately."))
+        inspect_row.addStretch(1)
+        inspect.addLayout(inspect_row)
+
+        editor = self.card(
+            layout,
+            "Rule editor",
+            "Create or replace one Mango windowrule entry. Match by app ID, title, or both. Mango supports per-window opacity here. Per-window blur strength is not available — only blur disable/enable via noblur.",
+        )
+        form = QGridLayout()
+        self.window_rule_appid = QLineEdit()
+        self.window_rule_appid.setPlaceholderText("com.mitchellh.ghostty or app.zen_browser.zen")
+        self.window_rule_title = QLineEdit()
+        self.window_rule_title.setPlaceholderText("Optional title match / regex")
+        self.window_rule_enable_title = QCheckBox("Match title too")
+        self.window_rule_focused_opacity = QSlider(Qt.Orientation.Horizontal)
+        self.window_rule_focused_opacity.setRange(0, 100)
+        self.window_rule_focused_opacity.setValue(100)
+        self.window_rule_focused_opacity_value = QLabel("disabled")
+        self.window_rule_unfocused_opacity = QSlider(Qt.Orientation.Horizontal)
+        self.window_rule_unfocused_opacity.setRange(0, 100)
+        self.window_rule_unfocused_opacity.setValue(100)
+        self.window_rule_unfocused_opacity_value = QLabel("disabled")
+        self.window_rule_enable_focused_opacity = QCheckBox("Use focused opacity override")
+        self.window_rule_enable_unfocused_opacity = QCheckBox("Use unfocused opacity override")
+        form.addWidget(QLabel("App ID match"), 0, 0)
+        form.addWidget(self.window_rule_appid, 0, 1)
+        form.addWidget(self.window_rule_enable_title, 1, 0)
+        form.addWidget(self.window_rule_title, 1, 1)
+        form.addWidget(self.window_rule_enable_focused_opacity, 2, 0)
+        focus_row = QHBoxLayout()
+        focus_row.addWidget(self.window_rule_focused_opacity, 1)
+        focus_row.addWidget(self.window_rule_focused_opacity_value)
+        form.addLayout(focus_row, 2, 1)
+        form.addWidget(self.window_rule_enable_unfocused_opacity, 3, 0)
+        unfocus_row = QHBoxLayout()
+        unfocus_row.addWidget(self.window_rule_unfocused_opacity, 1)
+        unfocus_row.addWidget(self.window_rule_unfocused_opacity_value)
+        form.addLayout(unfocus_row, 3, 1)
+        editor.addLayout(form)
+        self.window_rule_focused_opacity.valueChanged.connect(lambda v: self.window_rule_focused_opacity_value.setText(f"{v}% / {v/100:.2f}"))
+        self.window_rule_unfocused_opacity.valueChanged.connect(lambda v: self.window_rule_unfocused_opacity_value.setText(f"{v}% / {v/100:.2f}"))
+        self.window_rule_enable_title.toggled.connect(lambda _=False: self.build_window_rule_line())
+        self.window_rule_enable_focused_opacity.toggled.connect(lambda _=False: self.build_window_rule_line())
+        self.window_rule_enable_unfocused_opacity.toggled.connect(lambda _=False: self.build_window_rule_line())
+        self.window_rule_focused_opacity.valueChanged.connect(lambda _=0: self.build_window_rule_line())
+        self.window_rule_unfocused_opacity.valueChanged.connect(lambda _=0: self.build_window_rule_line())
+        self.window_rule_focused_opacity_value.setText("100% / 1.00")
+        self.window_rule_unfocused_opacity_value.setText("100% / 1.00")
+
+        self.window_rule_toggles: dict[str, QCheckBox] = {}
+        toggles = QGridLayout()
+        toggle_defs = [
+            ("isfloating", "Floating"),
+            ("isglobal", "Sticky / global"),
+            ("isoverlay", "Overlay / top layer"),
+            ("noblur", "Disable blur"),
+            ("isnoborder", "No border"),
+            ("isnoshadow", "No shadow"),
+            ("isnoradius", "No corner radius"),
+            ("isnoanimation", "No animation"),
+            ("noopenmaximized", "Do not open maximized"),
+            ("force_tiled_state", "Force tiled state"),
+            ("allow_csd", "Allow client-side decoration"),
+        ]
+        for i, (key, label) in enumerate(toggle_defs):
+            cb = QCheckBox(label)
+            self.window_rule_toggles[key] = cb
+            toggles.addWidget(cb, i // 2, i % 2)
+        editor.addLayout(toggles)
+
+        self.window_rule_appid.textChanged.connect(lambda _="": self.build_window_rule_line())
+        self.window_rule_title.textChanged.connect(lambda _="": self.build_window_rule_line())
+        self.window_rule_preview = QLabel()
+        self.window_rule_preview.setObjectName("pageSub")
+        self.window_rule_preview.setWordWrap(True)
+        editor.addWidget(self.window_rule_preview)
+        self.add_page_actions(page, [
+            ("Refresh Rules", self.refresh_window_rules, False, "Reload window rules and focused-window info from the current Mango config/session."),
+            ("Remove Selected Rule", self.remove_selected_window_rule, False, "Remove the selected windowrule entry from the in-memory list."),
+            ("Add or Replace Rule", self.add_or_replace_window_rule, True, "Add a new Mango window rule or replace an existing one with the same app ID/title match."),
+            ("Save Window Rules", self.save_window_rules, True, "Back up Mango config, write all window rules, and reload Mango."),
+        ])
         return page
 
     def page_startup(self) -> QWidget:
         page, layout = self.make_page(
             "Startup",
-            "KDE-like startup manager split by what owns startup: apps, tray-ready services, user services, and advanced Mango commands.",
+            "Apps added here start automatically after you log in and the desktop is ready.",
         )
 
         apps = self.card(
             layout,
-            "Normal application autostart",
-            "Starts GUI apps through ~/.config/autostart/*.desktop. Use this for apps that do not need a tray icon at session startup.",
+            "Startup Apps",
+            "Select an app and click Add to Startup. It will launch automatically on next login after the desktop and tray are ready.",
         )
         self.autostart_apps_list = QListWidget()
-        self.autostart_apps_list.setMinimumHeight(190)
+        self.autostart_apps_list.setMinimumHeight(250)
         apps.addWidget(self.autostart_apps_list)
         app_row = QHBoxLayout()
         self.desktop_app_combo = SearchCombo()
         app_row.addWidget(self.desktop_app_combo, 1)
-        for text, action, primary in [
-            ("Add app", self.add_selected_desktop_autostart, True),
-            ("Enable", self.enable_selected_autostart_app, False),
-            ("Disable", self.disable_selected_autostart_app, False),
-            ("Remove", self.remove_selected_autostart_app, False),
-            ("Open folder", lambda: self.open_folder(str(HOME / ".config/autostart")), False),
+        for text, action, primary, tooltip in [
+            ("Add to Startup", self.add_selected_desktop_autostart, True, "Copy the selected launcher into the startup apps folder."),
+            ("Remove from Startup", self.remove_selected_autostart_app, False, "Remove the selected launcher from the startup apps folder."),
+            ("Open Startup Folder", lambda: self.open_folder(str(HOME / ".config/autostart")), False, "Open the startup apps folder in Dolphin."),
         ]:
-            btn = QPushButton(text)
-            if primary:
-                btn.setObjectName("primary")
-            btn.clicked.connect(action)
-            app_row.addWidget(btn)
+            app_row.addWidget(self.action_button(text, action, primary, tooltip))
         apps.addLayout(app_row)
 
-        tray = self.card(
-            layout,
-            "Tray-ready startup",
-            "Services listed here restart only after DMS StatusNotifierWatcher and xembedsniproxy are ready. Use this for Dropbox, Sunshine, and other tray apps.",
-        )
-        self.tray_ready_list = QListWidget()
-        self.tray_ready_list.setMinimumHeight(160)
-        tray.addWidget(self.tray_ready_list)
-        tray_row = QHBoxLayout()
-        self.tray_service_combo = SearchCombo()
-        tray_row.addWidget(self.tray_service_combo, 1)
-        for text, action, primary in [
-            ("Add selected service", self.add_selected_tray_service, True),
-            ("Remove selected", self.remove_selected_tray_service, False),
-            ("Save tray-ready config", self.save_tray_startup_config, True),
-        ]:
-            btn = QPushButton(text)
-            if primary:
-                btn.setObjectName("primary")
-            btn.clicked.connect(action)
-            tray_row.addWidget(btn)
-        tray.addLayout(tray_row)
-        tray_note = QLabel(f"Config: {STARTUP_JSON}\nHelper: ~/.local/bin/dms-mango-post-startup")
-        tray_note.setObjectName("pageSub")
-        tray_note.setWordWrap(True)
-        tray.addWidget(tray_note)
-
-        services = self.card(
-            layout,
-            "User service autostart",
-            "Enable/disable systemd --user services at login. Use this for background services; use Tray-ready above when the service must create an icon.",
-        )
-        self.startup_services_list = QListWidget()
-        self.startup_services_list.setMinimumHeight(220)
-        services.addWidget(self.startup_services_list)
-        svc_row = QHBoxLayout()
-        self.service_filter = QLineEdit()
-        self.service_filter.setPlaceholderText("Filter services…")
-        self.service_filter.textChanged.connect(self.refresh_startup_services)
-        svc_row.addWidget(self.service_filter, 1)
-        for text, action, primary in [
-            ("Enable", self.enable_selected_user_service, True),
-            ("Disable", self.disable_selected_user_service, False),
-            ("Start", self.start_selected_user_service, False),
-            ("Stop", self.stop_selected_user_service, False),
-            ("Refresh", self.refresh_startup_services, False),
-        ]:
-            btn = QPushButton(text)
-            if primary:
-                btn.setObjectName("primary")
-            btn.clicked.connect(action)
-            svc_row.addWidget(btn)
-        services.addLayout(svc_row)
-
-        advanced = self.card(
-            layout,
-            "Advanced Mango exec-once commands",
-            "Raw Mango startup commands. Most users should prefer the sections above.",
-        )
-        self.startup_list = QListWidget()
-        self.startup_list.setMinimumHeight(150)
-        advanced.addWidget(self.startup_list)
-        row = QHBoxLayout()
-        self.startup_command = QLineEdit()
-        self.startup_command.setPlaceholderText("advanced exec-once command")
-        row.addWidget(self.startup_command, 1)
-        for text, action, primary in [
-            ("Add command", self.add_startup_command, False),
-            ("Remove selected", self.remove_startup_command, False),
-            ("Save advanced commands", self.save_startup, True),
-        ]:
-            btn = QPushButton(text)
-            if primary:
-                btn.setObjectName("primary")
-            btn.clicked.connect(action)
-            row.addWidget(btn)
-        advanced.addLayout(row)
         return page
 
     def page_services(self) -> QWidget:
@@ -1408,25 +1684,19 @@ class MainWindow(QMainWindow):
             row.add_control(combo)
             c.addWidget(row)
         actions = QHBoxLayout()
-        for text, action, primary in [
-            ("Apply selected defaults", self.apply_selected_default_apps, True),
-            ("Refresh", self.refresh_default_apps, False),
-            ("Apply approved baseline", self.apply_default_apps, False),
-            ("Open mimeapps.list", lambda: self.open_text_file(HOME / ".config/mimeapps.list"), False),
-            ("Open KDE Default Apps", lambda: self.launch_kde_module("componentchooser", "kcm_componentchooser"), False),
-        ]:
-            btn = QPushButton(text)
-            if primary:
-                btn.setObjectName("primary")
-            btn.clicked.connect(action)
-            actions.addWidget(btn)
-        actions.addStretch(1)
         c.addLayout(actions)
         notes = self.card(layout, "Verification", "Current MIME values after the last refresh/apply.")
         self.default_apps_label = QLabel()
         self.default_apps_label.setObjectName("pageSub")
         self.default_apps_label.setWordWrap(True)
         notes.addWidget(self.default_apps_label)
+        self.add_page_actions(page, [
+            ("Refresh Defaults", self.refresh_default_apps, False, "Reload MIME/default app status from the current system state."),
+            ("Open mimeapps.list", lambda: self.open_text_file(HOME / ".config/mimeapps.list"), False, "Open the MIME defaults file in your editor."),
+            ("Open KDE Default Apps", lambda: self.launch_kde_module("componentchooser", "kcm_componentchooser"), False, "Open KDE's component chooser for comparison."),
+            ("Apply Approved Baseline", self.apply_default_apps, False, "Apply the tested KDE/Qt default app baseline."),
+            ("Apply Selected Defaults", self.apply_selected_default_apps, True, "Back up mimeapps.list and apply the apps selected above."),
+        ])
         return page
 
     def page_screenshots(self) -> QWidget:
@@ -1574,6 +1844,9 @@ class MainWindow(QMainWindow):
             note.setWordWrap(True)
             layout.addWidget(note)
 
+        self.polkit_label = QLabel()
+        self.row(status_card, "Polkit policy", "Required for GUI autologin changes", self.polkit_label)
+
         conflicts_card = self.card(
             layout,
             "Autologin conflicts",
@@ -1603,26 +1876,18 @@ class MainWindow(QMainWindow):
         session_row.addWidget(self.session_combo, 1)
         control_card.addLayout(session_row)
 
-        row = QHBoxLayout()
-        for text, action, primary in [
-            ("Enable and consolidate autologin", self.enable_autologin, True),
-            ("Disable autologin", self.disable_autologin, False),
-            ("Refresh status", self.refresh_login, False),
-            ("Open SDDM config folder", lambda: self.open_folder("/etc/sddm.conf.d"), False),
-        ]:
-            btn = QPushButton(text)
-            if primary:
-                btn.setObjectName("primary")
-            btn.clicked.connect(action)
-            row.addWidget(btn)
-        row.addStretch(1)
-        control_card.addLayout(row)
         self.login_feedback = QLabel("\n")
         self.login_feedback.setObjectName("loginFeedback")
         self.login_feedback.setWordWrap(True)
         self.login_feedback.setMinimumHeight(80)
         self.login_feedback.setStyleSheet("padding: 8px; background: rgba(255,255,255,10); border-radius: 6px;")
         control_card.addWidget(self.login_feedback)
+        self.add_page_actions(page, [
+            ("Refresh Login Status", self.refresh_login, False, "Re-read SDDM autologin state and conflicts."),
+            ("Open SDDM Config Folder", lambda: self.open_folder("/etc/sddm.conf.d"), False, "Open SDDM config files in Dolphin."),
+            ("Disable Autologin", self.disable_autologin, False, "Disable the managed SDDM autologin entry."),
+            ("Enable & Consolidate Autologin", self.enable_autologin, True, "Merge conflicting SDDM autologin settings into one managed file."),
+        ])
         return page
 
     def page_backup(self) -> QWidget:
@@ -1759,9 +2024,11 @@ class MainWindow(QMainWindow):
     def refresh_all(self) -> None:
         self.cfg.reload()
         self.refresh_status()
+        self.refresh_first_run()
         self.refresh_controls()
         self.refresh_keyboard_specials()
         self.refresh_keybindings()
+        self.refresh_window_rules()
         self.refresh_startup()
         self.refresh_services()
         self.refresh_portals()
@@ -1785,6 +2052,211 @@ class MainWindow(QMainWindow):
         self.keyboard_label.setText(
             f"Keyboard layout: {out if code == 0 else 'unavailable'}"
         )
+
+    # ------------------------------------------------------------------
+    # First-run / system-setup helpers
+    # ------------------------------------------------------------------
+
+    def rpm_installed(self, pkg: str) -> bool:
+        code, _ = run_cmd(["rpm", "-q", pkg], timeout=10)
+        return code == 0
+
+    def env_file_status(self) -> dict[str, tuple[bool, str]]:
+        """Return {var: (ok, current_or_missing)} for required env vars."""
+        result: dict[str, tuple[bool, str]] = {}
+        if not QT_ENV_FILE.exists():
+            for var, expected in ENV_REQUIRED_VARS.items():
+                result[var] = (False, "env file missing")
+            return result
+        text = QT_ENV_FILE.read_text(errors="ignore")
+        for var, expected in ENV_REQUIRED_VARS.items():
+            m = re.search(rf"(?m)^{re.escape(var)}\s*=\s*(.*)\s*$", text)
+            if m:
+                actual = m.group(1).strip()
+                result[var] = (actual == expected, actual)
+            else:
+                result[var] = (False, "not set")
+        return result
+
+    def missing_portal_packages(self) -> list[tuple[str, str]]:
+        return [(pkg, desc) for pkg, desc in PORTAL_PACKAGES if not self.rpm_installed(pkg)]
+
+    def all_portals_ok(self) -> bool:
+        return len(self.missing_portal_packages()) == 0
+
+    def consolidate_script_ok(self) -> tuple[bool, str]:
+        if not CONSOLIDATE_SCRIPT.exists():
+            return False, "Script missing — run Apply Baseline or reinstall"
+        try:
+            code, out = run_cmd(["python3", str(CONSOLIDATE_SCRIPT)], timeout=5)
+            # Usage error (exit 2) means the script exists and is runnable
+            return True, "OK"
+        except Exception as exc:
+            return False, str(exc)
+
+    def autologin_status(self) -> tuple[str, str]:
+        """Return (state_label, detail) for SDDM autologin."""
+        conflicts = self.autologin_conflicts()
+        active = next((e for e in reversed(conflicts) if e.get("user") or e.get("session")), None)
+        if not active:
+            return "Disabled", "No autologin configured"
+        if len(conflicts) > 1:
+            return "Conflicting", f"{len(conflicts)} files have [Autologin]"
+        if active.get("session") != "mango.desktop":
+            return "Wrong session", f"Session is {active.get('session', '?')}"
+        return "OK", f"User {active.get('user')} → {active.get('session')}"
+
+    def install_portals(self) -> None:
+        missing = self.missing_portal_packages()
+        if not missing:
+            self.say("All portal packages are already installed.")
+            return
+        pkg_list = " ".join(pkg for pkg, _ in missing)
+        if QMessageBox.question(
+            self,
+            "Install portal packages",
+            f"These portal packages are missing:\n\n" + "\n".join(f"  • {pkg} — {desc}" for pkg, desc in missing)
+            + f"\n\nInstall them now with dnf?\n\nCommand: pkexec dnf install -y {pkg_list}",
+        ) != QMessageBox.StandardButton.Yes:
+            self.say("Cancelled portal installation.")
+            return
+        self.set_working("Installing portal packages via dnf...")
+
+        def do_install() -> None:
+            code, out = run_cmd(["pkexec", "dnf", "install", "-y"] + [pkg for pkg, _ in missing], timeout=300)
+            if code == 0:
+                self.say(f"OK: Portal packages installed.\n{out}")
+            else:
+                self.say(f"FAIL: Portal installation failed (exit {code}).\n{out}")
+            self.refresh_first_run()
+
+        QTimer.singleShot(100, do_install)
+
+    def fix_environment(self) -> None:
+        if QMessageBox.question(
+            self,
+            "Fix environment",
+            f"Rewrite {QT_ENV_FILE} with the required session and display variables?\n\n"
+            "This sets WAYLAND_DISPLAY, XDG_CURRENT_DESKTOP, XDG_SESSION_TYPE, QT_QPA_PLATFORM, and Qt theming vars system-wide via environment.d.",
+        ) != QMessageBox.StandardButton.Yes:
+            self.say("Cancelled environment fix.")
+            return
+        self.set_working("Writing environment file...")
+        backup = BACKUP_ROOT / dt.datetime.now().strftime("%Y%m%d-%H%M%S") / "environment.d" / "90-dms-kde-qt.conf"
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        if QT_ENV_FILE.exists():
+            shutil.copy2(QT_ENV_FILE, backup)
+        QT_ENV_FILE.parent.mkdir(parents=True, exist_ok=True)
+        lines = [
+            "# DMS KDE Workstation: session and display environment for Mango Wayland.",
+            "# These are imported by systemd --user and affect user services + app launches.",
+        ]
+        for var, value in ENV_REQUIRED_VARS.items():
+            lines.append(f"{var}={value}")
+        QT_ENV_FILE.write_text("\n".join(lines) + "\n")
+        self.say(f"OK: Environment file written.\nPrevious version backed up to: {backup}\n\nLog out and back in for all services to pick up the new values.")
+        self.refresh_first_run()
+
+    def first_run_apply_baseline(self) -> None:
+        if QMessageBox.question(
+            self,
+            "Apply First Run Setup",
+            "Apply the full DMS Mango workstation baseline now?\n\nThis writes user config files and deploys helpers.",
+        ) != QMessageBox.StandardButton.Yes:
+            self.say("Cancelled.")
+            return
+        self.set_working("Applying workstation baseline...")
+
+        def do_apply() -> None:
+            self.run_baseline_script(["--apply"], "Applied workstation baseline")
+
+        QTimer.singleShot(100, do_apply)
+
+    def first_run_fix_login(self) -> None:
+        """Jump to the Login page so the user can use the proper controls there."""
+        self.stack.setCurrentIndex(self.login_page_index)
+        self.sidebar.setCurrentRow(self.login_page_index)
+        self.refresh_login()
+        self.say("Switched to Login page. Use 'Enable & Consolidate Autologin' there.")
+
+    # ------------------------------------------------------------------
+
+    def refresh_first_run(self) -> None:
+        if not hasattr(self, "first_run_rows"):
+            return
+        # Environment
+        env_status = self.env_file_status()
+        env_all_ok = all(ok for ok, _ in env_status.values())
+        env_text = "OK" if env_all_ok else f"{sum(1 for ok, _ in env_status.values() if ok)}/{len(env_status)} vars OK"
+        self._update_first_run_row("env", env_all_ok, env_text)
+
+        # Portals
+        missing_portals = self.missing_portal_packages()
+        portal_text = "OK" if not missing_portals else f"{len(missing_portals)} missing"
+        self._update_first_run_row("portals", not missing_portals, portal_text)
+
+        # Baseline files
+        baseline_ok = (
+            MANGO_CONFIG.exists()
+            and PORTAL_OVERRIDE.exists()
+            and PORTAL_CONFIG.exists()
+            and POST_STARTUP_HELPER.exists()
+            and STARTUP_JSON.exists()
+            and SETTINGS_BIN.exists()
+            and SETTINGS_AUTOSTART.exists()
+        )
+        self._update_first_run_row("baseline", baseline_ok, "OK" if baseline_ok else "Missing files")
+
+        # DMS startup line in Mango config
+        mango_line = "exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run"
+        dms_startup_ok = mango_line in self.cfg.text
+        self._update_first_run_row("dms_startup", dms_startup_ok, "OK" if dms_startup_ok else "Missing exec-once")
+
+        # Autologin
+        login_state, login_detail = self.autologin_status()
+        login_ok = login_state == "OK"
+        self._update_first_run_row("login", login_ok, f"{login_state}: {login_detail}")
+
+        # Consolidate script
+        script_ok, script_detail = self.consolidate_script_ok()
+        self._update_first_run_row("script", script_ok, script_detail)
+
+        # Theme export
+        theme_export_done = (HOME / ".local/share/color-schemes/DankMatugen.colors").exists()
+        self._update_first_run_row("theme", theme_export_done, "OK" if theme_export_done else "Not exported yet")
+
+        # Overall
+        all_ok = env_all_ok and not missing_portals and baseline_ok and dms_startup_ok and login_ok and script_ok
+        self.first_run_overall_label.setText(
+            f"Overall: {'All checks passing' if all_ok else 'Some items need attention'}"
+        )
+        self.first_run_overall_label.setStyleSheet(f"color: {ACCENT if all_ok else WARNING}; font-weight: 650; font-size: 18px;")
+
+    def _update_first_run_row(self, key: str, ok: bool, detail: str) -> None:
+        status_label = self.first_run_rows.get(key)
+        if status_label is None:
+            return
+        status_label.setText(f"{'OK' if ok else 'NEEDS FIX'} — {detail}")
+        status_label.setStyleSheet(f"color: {ACCENT if ok else WARNING};")
+
+    def run_baseline_script(self, args: list[str], title: str) -> None:
+        if not APPLY_BASELINE_SCRIPT.exists():
+            self.say(f"FAIL: Baseline script not found: {APPLY_BASELINE_SCRIPT}")
+            return
+        code, out = run_cmd([str(APPLY_BASELINE_SCRIPT), *args], timeout=180)
+        if code == 0:
+            self.say(f"OK: {title}\n{out}")
+        else:
+            self.say(f"FAIL: {title} exited with code {code}.\n{out}")
+        self.refresh_first_run()
+
+    def dry_run_first_run_setup(self) -> None:
+        self.set_working("Running baseline dry-run...")
+
+        def do_dry_run() -> None:
+            self.run_baseline_script([], "Baseline dry-run")
+
+        QTimer.singleShot(100, do_dry_run)
 
     def refresh_controls(self) -> None:
         for key, widget in self.controls.items():
@@ -2001,8 +2473,217 @@ class MainWindow(QMainWindow):
     def save_keybindings(self) -> None:
         if QMessageBox.question(self, "Save keybindings", "Backup Mango config and save keybinding changes?") != QMessageBox.StandardButton.Yes:
             return
-        backup = self.cfg.save()
+        try:
+            backup = self.cfg.save()
+        except Exception as exc:
+            self.say(f"FAIL: Could not save keybindings: {exc}")
+            return
         self.say(f"Saved keybindings. Backup: {backup}")
+        self.reload_mango()
+
+    def focused_window_rule_target(self) -> dict[str, str]:
+        code, out = run_cmd(["mmsg", "-g", "-c"], timeout=8)
+        info = {"appid": "", "title": ""}
+        if code != 0:
+            return info
+        for line in out.splitlines():
+            parts = line.split(" ", 2)
+            if len(parts) < 3:
+                continue
+            kind = parts[1].strip()
+            value = parts[2].strip()
+            if kind == "appid":
+                info["appid"] = value
+            elif kind == "title":
+                info["title"] = value
+        return info
+
+    def parse_window_rule_line(self, line: str) -> dict[str, str]:
+        raw = line.strip()
+        if raw.startswith("windowrule="):
+            raw = raw.split("=", 1)[1]
+        data: dict[str, str] = {"__raw": raw}
+        for part in raw.split(","):
+            if ":" not in part:
+                continue
+            key, value = part.split(":", 1)
+            data[key.strip()] = value.strip()
+        return data
+
+    def build_window_rule_line(self) -> str | None:
+        appid = self.window_rule_appid.text().strip() if hasattr(self, "window_rule_appid") else ""
+        title = self.window_rule_title.text().strip() if hasattr(self, "window_rule_title") else ""
+        if not appid and not title:
+            self.say("FAIL: Window rule needs at least an App ID or Title match.")
+            return None
+        parts: list[str] = []
+        if hasattr(self, "window_rule_enable_focused_opacity") and self.window_rule_enable_focused_opacity.isChecked():
+            parts.append(f"focused_opacity:{self.window_rule_focused_opacity.value()/100:.2f}")
+        if hasattr(self, "window_rule_enable_unfocused_opacity") and self.window_rule_enable_unfocused_opacity.isChecked():
+            parts.append(f"unfocused_opacity:{self.window_rule_unfocused_opacity.value()/100:.2f}")
+        for key, widget in getattr(self, "window_rule_toggles", {}).items():
+            if widget.isChecked():
+                parts.append(f"{key}:1")
+        if appid:
+            parts.append(f"appid:{appid}")
+        if hasattr(self, "window_rule_enable_title") and self.window_rule_enable_title.isChecked() and title:
+            parts.append(f"title:{title}")
+        line = "windowrule=" + ",".join(parts)
+        if hasattr(self, "window_rule_preview"):
+            self.window_rule_preview.setText(line)
+        return line
+
+    def refresh_focused_window_rule_target(self) -> None:
+        if not hasattr(self, "window_rule_focus_label"):
+            return
+        info = self.focused_window_rule_target()
+        if info.get("appid") or info.get("title"):
+            self.window_rule_focus_label.setText(
+                f"Focused app ID: {info.get('appid') or 'unknown'}\nFocused title: {info.get('title') or 'unknown'}"
+            )
+        else:
+            self.window_rule_focus_label.setText("Could not read focused window from Mango. Focus the target app and try again.")
+
+    def apply_window_rule_target(self, info: dict[str, str]) -> None:
+        if hasattr(self, "window_rule_appid"):
+            self.window_rule_appid.setText(info.get("appid", ""))
+        if hasattr(self, "window_rule_title"):
+            self.window_rule_title.setText(info.get("title", ""))
+        if hasattr(self, "window_rule_enable_title"):
+            self.window_rule_enable_title.setChecked(False)
+        self.refresh_focused_window_rule_target()
+        self.build_window_rule_line()
+        self.say(f"Captured window: {info.get('appid') or info.get('title')}")
+
+    def use_focused_window_for_rule(self) -> None:
+        info = self.focused_window_rule_target()
+        if not info.get("appid") and not info.get("title"):
+            self.say("FAIL: Could not capture focused window.")
+            return
+        self.apply_window_rule_target(info)
+
+    def capture_window_rule_target_delayed(self) -> None:
+        if hasattr(self, "window_rule_focus_label"):
+            self.window_rule_focus_label.setText("Capture started. Switch to the target app now — this settings window will hide and capture in 3 seconds.")
+        self.hide()
+        def finish_capture() -> None:
+            info = self.focused_window_rule_target()
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            if not info.get("appid") and not info.get("title"):
+                self.say("FAIL: Delayed capture could not read the target window.")
+                self.refresh_focused_window_rule_target()
+                return
+            self.apply_window_rule_target(info)
+        QTimer.singleShot(3000, finish_capture)
+
+    def refresh_window_rules(self) -> None:
+        self.refresh_focused_window_rule_target()
+        if not hasattr(self, "window_rules_list"):
+            return
+        self.window_rules_list.clear()
+        for line in self.cfg.text.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("windowrule="):
+                continue
+            data = self.parse_window_rule_line(stripped)
+            label_parts = []
+            if data.get("appid"):
+                label_parts.append(f"appid={data['appid']}")
+            if data.get("title"):
+                label_parts.append(f"title={data['title']}")
+            if data.get("focused_opacity"):
+                label_parts.append(f"focus={data['focused_opacity']}")
+            if data.get("unfocused_opacity"):
+                label_parts.append(f"unfocus={data['unfocused_opacity']}")
+            label = " | ".join(label_parts) if label_parts else stripped
+            item = QListWidgetItem(label)
+            item.setData(Qt.ItemDataRole.UserRole, stripped)
+            self.window_rules_list.addItem(item)
+        self.build_window_rule_line()
+
+    def load_selected_window_rule(self, item: QListWidgetItem) -> None:
+        data = self.parse_window_rule_line(str(item.data(Qt.ItemDataRole.UserRole)))
+        self.window_rule_appid.setText(data.get("appid", ""))
+        self.window_rule_title.setText(data.get("title", ""))
+        self.window_rule_enable_title.setChecked(bool(data.get("title", "")))
+        focused = data.get("focused_opacity", "")
+        unfocused = data.get("unfocused_opacity", "")
+        self.window_rule_enable_focused_opacity.setChecked(bool(focused))
+        self.window_rule_enable_unfocused_opacity.setChecked(bool(unfocused))
+        if focused:
+            with contextlib.suppress(ValueError):
+                self.window_rule_focused_opacity.setValue(int(float(focused) * 100))
+        if unfocused:
+            with contextlib.suppress(ValueError):
+                self.window_rule_unfocused_opacity.setValue(int(float(unfocused) * 100))
+        for key, widget in self.window_rule_toggles.items():
+            widget.setChecked(data.get(key) == "1")
+        self.build_window_rule_line()
+
+    def add_or_replace_window_rule(self) -> None:
+        line = self.build_window_rule_line()
+        if not line or not hasattr(self, "window_rules_list"):
+            return
+        new_data = self.parse_window_rule_line(line)
+        replace_row = None
+        for i in range(self.window_rules_list.count()):
+            item = self.window_rules_list.item(i)
+            old_data = self.parse_window_rule_line(str(item.data(Qt.ItemDataRole.UserRole)))
+            if old_data.get("appid", "") == new_data.get("appid", "") and old_data.get("title", "") == new_data.get("title", ""):
+                replace_row = i
+                break
+        label_parts = []
+        if new_data.get("appid"):
+            label_parts.append(f"appid={new_data['appid']}")
+        if new_data.get("title"):
+            label_parts.append(f"title={new_data['title']}")
+        if new_data.get("focused_opacity"):
+            label_parts.append(f"focus={new_data['focused_opacity']}")
+        if new_data.get("unfocused_opacity"):
+            label_parts.append(f"unfocus={new_data['unfocused_opacity']}")
+        item = QListWidgetItem(" | ".join(label_parts) if label_parts else line)
+        item.setData(Qt.ItemDataRole.UserRole, line)
+        if replace_row is None:
+            self.window_rules_list.addItem(item)
+            self.say("Added window rule to pending list.")
+        else:
+            self.window_rules_list.takeItem(replace_row)
+            self.window_rules_list.insertItem(replace_row, item)
+            self.say("Replaced existing window rule in pending list.")
+
+    def remove_selected_window_rule(self) -> None:
+        if not hasattr(self, "window_rules_list"):
+            return
+        selected = self.window_rules_list.selectedItems()
+        if not selected:
+            self.say("No window rule selected.")
+            return
+        for item in selected:
+            self.window_rules_list.takeItem(self.window_rules_list.row(item))
+        self.say("Removed selected window rule from pending list.")
+
+    def save_window_rules(self) -> None:
+        if not hasattr(self, "window_rules_list"):
+            return
+        if QMessageBox.question(self, "Save window rules", "Backup Mango config and save window rule changes?") != QMessageBox.StandardButton.Yes:
+            return
+        rules = [str(self.window_rules_list.item(i).data(Qt.ItemDataRole.UserRole)) for i in range(self.window_rules_list.count())]
+        self.cfg.remove_matching(r"^\s*windowrule=")
+        marker = "# layer rule"
+        block = ("\n".join(rules) + "\n") if rules else ""
+        if marker in self.cfg.text:
+            idx = self.cfg.text.find(marker)
+            self.cfg.text = self.cfg.text[:idx].rstrip() + "\n\n" + block + self.cfg.text[idx:]
+        elif block:
+            self.cfg.text = self.cfg.text.rstrip() + "\n\n" + block
+        try:
+            backup = self.cfg.save()
+        except Exception as exc:
+            self.say(f"FAIL: Could not save window rules: {exc}")
+            return
+        self.say(f"Saved window rules. Backup: {backup}")
         self.reload_mango()
 
     def refresh_portals(self) -> None:
@@ -2021,7 +2702,10 @@ class MainWindow(QMainWindow):
 
     def restart_portals(self) -> None:
         code, out = run_cmd(["systemctl", "--user", "restart", "xdg-desktop-portal.service", "xdg-desktop-portal-wlr.service", "xdg-desktop-portal-gtk.service"], timeout=25)
-        self.say(f"Restart portals exit {code}\n{out}")
+        if code == 0:
+            self.say("Portals restarted successfully.")
+        else:
+            self.say(f"FAIL: Portal restart failed (exit {code}). {out}\nCheck: systemctl --user status xdg-desktop-portal.service")
         QTimer.singleShot(900, self.refresh_portals)
 
     def test_file_chooser(self) -> None:
@@ -2132,11 +2816,13 @@ class MainWindow(QMainWindow):
         dms = HOME / ".config/DankMaterialShell/settings.json"
         if dms.exists():
             self.backup_file(dms)
-            with contextlib.suppress(Exception):
+            try:
                 data = json.loads(dms.read_text())
                 data["fontFamily"] = family
                 dms.write_text(json.dumps(data, indent=2) + "\n")
                 outputs.append(f"DMS: fontFamily={family}")
+            except Exception as exc:
+                outputs.append(f"DMS: FAIL - {exc}")
         # kdeglobals
         kg = HOME / ".config/kdeglobals"
         if kg.exists():
@@ -2298,7 +2984,7 @@ class MainWindow(QMainWindow):
                 for name, desktop in app_items:
                     combo.add_item(name, desktop)
                 target = actual if actual != "unset" else recommended
-                combo.set_current_data(target if combo.findData(target) >= 0 else old)
+                combo.set_current_data(target if any(d == target for _, d in combo._items) else old)
                 combo.block_signals(False)
             status = "OK" if expected else ("MIXED" if not all_same else "WARN")
             if hasattr(self, "default_app_statuses") and key in self.default_app_statuses:
@@ -2417,82 +3103,8 @@ class MainWindow(QMainWindow):
         self.say(f"Saved tray-ready startup config. Backup: {backup}")
 
     def refresh_startup(self) -> None:
-        if hasattr(self, "startup_list"):
-            self.startup_list.clear()
-            for command in self.cfg.exec_once_commands():
-                self.startup_list.addItem(QListWidgetItem(command))
         self.refresh_desktop_app_combo()
         self.refresh_autostart_apps()
-        self.refresh_tray_ready_services()
-        self.refresh_tray_service_combo()
-        self.refresh_startup_services()
-
-    def refresh_tray_ready_services(self) -> None:
-        if not hasattr(self, "tray_ready_list"):
-            return
-        self.tray_ready_list.clear()
-        data = self.load_startup_config()
-        for service in data.get("tray_ready_services", []):
-            item = QListWidgetItem(service)
-            item.setData(Qt.ItemDataRole.UserRole, service)
-            self.tray_ready_list.addItem(item)
-
-    def refresh_tray_service_combo(self) -> None:
-        if not hasattr(self, "tray_service_combo"):
-            return
-        current = self.tray_service_combo.current_data()
-        configured = set(self.load_startup_config().get("tray_ready_services", []))
-        self.tray_service_combo.block_signals(True)
-        self.tray_service_combo.clear_items()
-        preferred = [
-            "dropbox.service",
-            "app-dev.lizardbyte.app.Sunshine.service",
-            "kdeconnect.service",
-            "syncthing.service",
-        ]
-        seen = set()
-        for unit in preferred + [unit for unit, _ in self.user_services()]:
-            if unit in seen or unit in configured:
-                continue
-            seen.add(unit)
-            self.tray_service_combo.add_item(unit, unit)
-        if current:
-            self.tray_service_combo.set_current_data(current)
-        self.tray_service_combo.block_signals(False)
-
-    def add_selected_tray_service(self) -> None:
-        if not hasattr(self, "tray_service_combo"):
-            return
-        service = self.tray_service_combo.current_data()
-        if not service:
-            return
-        data = self.load_startup_config()
-        services = list(data.get("tray_ready_services", []))
-        if service not in services:
-            services.append(service)
-        data["tray_ready_services"] = services
-        self.save_startup_config(data)
-        self.refresh_tray_ready_services()
-        self.refresh_tray_service_combo()
-
-    def remove_selected_tray_service(self) -> None:
-        if not hasattr(self, "tray_ready_list"):
-            return
-        selected = [item.data(Qt.ItemDataRole.UserRole) for item in self.tray_ready_list.selectedItems()]
-        if not selected:
-            self.say("No tray-ready service selected.")
-            return
-        data = self.load_startup_config()
-        data["tray_ready_services"] = [s for s in data.get("tray_ready_services", []) if s not in selected]
-        self.save_startup_config(data)
-        self.refresh_tray_ready_services()
-        self.refresh_tray_service_combo()
-
-    def save_tray_startup_config(self) -> None:
-        data = self.load_startup_config()
-        self.save_startup_config(data)
-        self.refresh_tray_ready_services()
-        self.refresh_tray_service_combo()
 
     def desktop_name(self, path: Path) -> str:
         try:
@@ -2553,8 +3165,9 @@ class MainWindow(QMainWindow):
         autostart_dir = HOME / ".config/autostart"
         autostart_dir.mkdir(parents=True, exist_ok=True)
         for path in sorted(autostart_dir.glob("*.desktop")):
-            hidden = self.desktop_hidden(path)
-            label = f"{'Disabled' if hidden else 'Enabled'}  —  {self.desktop_name(path)}  ({path.name})"
+            if self.desktop_hidden(path):
+                continue
+            label = f"{self.desktop_name(path)}"
             item = QListWidgetItem(label)
             item.setData(Qt.ItemDataRole.UserRole, str(path))
             self.autostart_apps_list.addItem(item)
@@ -2587,28 +3200,21 @@ class MainWindow(QMainWindow):
             return
         source_data = self.desktop_app_combo.current_data()
         if not source_data:
+            self.say("FAIL: No app selected.")
             return
         source = Path(source_data)
+        if not source.exists():
+            self.say(f"FAIL: Desktop file not found: {source}")
+            return
         target = HOME / ".config/autostart" / source.name
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, target)
-        self.set_autostart_hidden(target, False)
-        self.say(f"Added autostart app: {self.desktop_name(target)}")
+        try:
+            shutil.copy2(source, target)
+            self.set_autostart_hidden(target, False)
+            self.say(f"Added autostart app: {self.desktop_name(target)}")
+        except Exception as exc:
+            self.say(f"FAIL: Could not copy desktop file: {exc}")
         self.refresh_autostart_apps()
-
-    def enable_selected_autostart_app(self) -> None:
-        path = self.selected_autostart_path()
-        if path:
-            self.set_autostart_hidden(path, False)
-            self.say(f"Enabled autostart app: {path.name}")
-            self.refresh_autostart_apps()
-
-    def disable_selected_autostart_app(self) -> None:
-        path = self.selected_autostart_path()
-        if path:
-            self.set_autostart_hidden(path, True)
-            self.say(f"Disabled autostart app: {path.name}")
-            self.refresh_autostart_apps()
 
     def remove_selected_autostart_app(self) -> None:
         path = self.selected_autostart_path()
@@ -2619,81 +3225,12 @@ class MainWindow(QMainWindow):
             != QMessageBox.StandardButton.Yes
         ):
             return
-        path.unlink(missing_ok=True)
-        self.say(f"Removed autostart app: {path.name}")
+        try:
+            path.unlink(missing_ok=True)
+            self.say(f"Removed autostart app: {path.name}")
+        except Exception as exc:
+            self.say(f"FAIL: Could not remove {path}: {exc}")
         self.refresh_autostart_apps()
-
-    def user_services(self) -> list[tuple[str, str]]:
-        code, out = run_cmd(
-            [
-                "systemctl",
-                "--user",
-                "list-unit-files",
-                "--type=service",
-                "--no-pager",
-                "--plain",
-            ],
-            timeout=20,
-        )
-        services: list[tuple[str, str]] = []
-        if code != 0:
-            return services
-        for line in out.splitlines():
-            parts = line.split()
-            if len(parts) >= 2 and parts[0].endswith(".service"):
-                services.append((parts[0], parts[1]))
-        return services
-
-    def refresh_startup_services(self) -> None:
-        if not hasattr(self, "startup_services_list"):
-            return
-        query = (
-            self.service_filter.text().lower().strip()
-            if hasattr(self, "service_filter")
-            else ""
-        )
-        self.startup_services_list.clear()
-        for unit, state in self.user_services():
-            if query and query not in unit.lower() and query not in state.lower():
-                continue
-            active_code, _ = run_cmd(
-                ["systemctl", "--user", "is-active", "--quiet", unit], timeout=4
-            )
-            active = "running" if active_code == 0 else "stopped"
-            item = QListWidgetItem(f"{state:10}  {active:8}  {unit}")
-            item.setData(Qt.ItemDataRole.UserRole, unit)
-            self.startup_services_list.addItem(item)
-
-    def selected_startup_service(self) -> str | None:
-        items = (
-            self.startup_services_list.selectedItems()
-            if hasattr(self, "startup_services_list")
-            else []
-        )
-        if not items:
-            self.say("No user service selected.")
-            return None
-        return str(items[0].data(Qt.ItemDataRole.UserRole))
-
-    def user_service_action(self, action: str) -> None:
-        unit = self.selected_startup_service()
-        if not unit:
-            return
-        code, out = run_cmd(["systemctl", "--user", action, unit], timeout=25)
-        self.say(f"systemctl --user {action} {unit}\nexit {code}\n{out}")
-        self.refresh_startup_services()
-
-    def enable_selected_user_service(self) -> None:
-        self.user_service_action("enable")
-
-    def disable_selected_user_service(self) -> None:
-        self.user_service_action("disable")
-
-    def start_selected_user_service(self) -> None:
-        self.user_service_action("start")
-
-    def stop_selected_user_service(self) -> None:
-        self.user_service_action("stop")
 
     def refresh_services(self) -> None:
         for unit, label in self.service_rows:
@@ -2732,6 +3269,14 @@ class MainWindow(QMainWindow):
         is_sddm = "sddm" in dm.lower()
         if hasattr(self, "display_manager_label"):
             self.display_manager_label.setText(dm or "not detected")
+
+        if hasattr(self, "polkit_label"):
+            if POLKIT_POLICY.exists():
+                self.polkit_label.setText("Installed")
+                self.polkit_label.setStyleSheet(f"color: {ACCENT};")
+            else:
+                self.polkit_label.setText("MISSING — run: sudo cp <repo>/configs/polkit/io.dms-kde-workstation.sddm-autologin.policy /usr/share/polkit-1/actions/")
+                self.polkit_label.setStyleSheet(f"color: {WARNING};")
 
         conflicts = self.autologin_conflicts()
         managed = next((e for e in conflicts if "dms-mango-autologin" in e["path"]), None)
@@ -2791,6 +3336,13 @@ class MainWindow(QMainWindow):
 
     def enable_autologin(self) -> None:
         self.trace("enable_autologin CALLED")
+        if not Path(self.CONSOLIDATE_SCRIPT).exists():
+            self.login_msg(
+                f"ERROR: Consolidate script is missing.\n\n"
+                f"Expected: {self.CONSOLIDATE_SCRIPT}\n\n"
+                f"Run 'Apply Baseline' on the First Run page to deploy it, then try again."
+            )
+            return
         user = self.controls["__login_user"].text().strip()
         session = self.session_combo.currentData() if hasattr(self, "session_combo") else "mango.desktop"
         if not session:
@@ -2826,6 +3378,13 @@ class MainWindow(QMainWindow):
 
     def disable_autologin(self) -> None:
         self.trace("disable_autologin CALLED")
+        if not Path(self.CONSOLIDATE_SCRIPT).exists():
+            self.login_msg(
+                f"ERROR: Consolidate script is missing.\n\n"
+                f"Expected: {self.CONSOLIDATE_SCRIPT}\n\n"
+                f"Run 'Apply Baseline' on the First Run page to deploy it, then try again."
+            )
+            return
         conflicts = self.autologin_conflicts()
         detail = "\n".join(f"  • {c['path']}: {c['session']}" for c in conflicts) if conflicts else "  (none found)"
         if QMessageBox.question(
@@ -2896,13 +3455,16 @@ class MainWindow(QMainWindow):
         ):
             return
         current_backup = self.cfg.backup()
-        MANGO_CONFIG.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, MANGO_CONFIG)
-        self.cfg.reload()
-        self.say(
-            f"Restored {source}\nPrevious current config backed up to: {current_backup}"
-        )
-        self.reload_mango()
+        try:
+            MANGO_CONFIG.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, MANGO_CONFIG)
+            self.cfg.reload()
+            self.say(
+                f"Restored {source}\nPrevious config backed up to: {current_backup}"
+            )
+            self.reload_mango()
+        except Exception as exc:
+            self.say(f"FAIL: Could not restore backup: {exc}")
 
     def reset_to_project_baseline(self) -> None:
         source = PROJECT / "configs/mango/config.conf.working-20260516"
@@ -2919,12 +3481,15 @@ class MainWindow(QMainWindow):
         ):
             return
         current_backup = self.cfg.backup()
-        shutil.copy2(source, MANGO_CONFIG)
-        self.cfg.reload()
-        self.say(
-            f"Reset to project baseline. Previous config backed up to: {current_backup}"
-        )
-        self.reload_mango()
+        try:
+            shutil.copy2(source, MANGO_CONFIG)
+            self.cfg.reload()
+            self.say(
+                f"Reset to project baseline. Previous config backed up to: {current_backup}"
+            )
+            self.reload_mango()
+        except Exception as exc:
+            self.say(f"FAIL: Could not reset to baseline: {exc}")
 
     def export_current_baseline(self) -> None:
         target = PROJECT / "configs/mango/config.conf.working-20260516"
@@ -2938,8 +3503,11 @@ class MainWindow(QMainWindow):
         ):
             return
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(MANGO_CONFIG, target)
-        self.say(f"Exported current Mango config as project baseline: {target}")
+        try:
+            shutil.copy2(MANGO_CONFIG, target)
+            self.say(f"Exported current Mango config as project baseline: {target}")
+        except Exception as exc:
+            self.say(f"FAIL: Could not export baseline: {exc}")
 
     def input_keys(self) -> list[str]:
         return [
@@ -3096,7 +3664,9 @@ class MainWindow(QMainWindow):
         ):
             return
         for key in keys:
-            widget = self.controls[key]
+            widget = self.controls.get(key)
+            if widget is None:
+                continue
             if isinstance(widget, QCheckBox):
                 self.cfg.set(key, widget.isChecked())
             elif isinstance(widget, QComboBox):
@@ -3115,7 +3685,11 @@ class MainWindow(QMainWindow):
                 self.cfg.set(
                     key, widget.value() / scale if scale != 1 else widget.value()
                 )
-        backup = self.cfg.save()
+        try:
+            backup = self.cfg.save()
+        except Exception as exc:
+            self.say(f"FAIL: Could not save Mango config: {exc}")
+            return
         self.say(f"Saved {label}. Backup: {backup}")
         self.reload_mango()
 
@@ -3159,7 +3733,11 @@ class MainWindow(QMainWindow):
             self.cfg.ensure_line(
                 "bind=SUPER+CTRL,2,switch_keyboard_layout,1", "# keyboard"
             )
-        backup = self.cfg.save()
+        try:
+            backup = self.cfg.save()
+        except Exception as exc:
+            self.say(f"FAIL: Could not save keyboard settings: {exc}")
+            return
         self.say(f"Saved keyboard. Backup: {backup}")
         self.reload_mango()
 
@@ -3167,32 +3745,24 @@ class MainWindow(QMainWindow):
         self.startup_command.setText(command)
         self.add_startup_command()
 
-    def add_startup_command(self) -> None:
-        command = self.startup_command.text().strip()
-        if command:
-            self.cfg.add_exec_once(command)
-            self.startup_command.clear()
-            self.refresh_startup()
-
-    def remove_startup_command(self) -> None:
-        for item in self.startup_list.selectedItems():
-            self.cfg.remove_exec_once(item.text())
-        self.refresh_startup()
-
-    def save_startup(self) -> None:
-        backup = self.cfg.save()
-        self.say(f"Saved startup. Backup: {backup}")
-        self.reload_mango()
-
     def set_active_layout(self) -> None:
-        layout = LAYOUTS[self.live_layout.currentText()]
+        layout = LAYOUTS.get(self.live_layout.currentText(), "")
+        if not layout:
+            self.say("FAIL: No layout selected.")
+            return
         code, out = run_cmd(["mmsg", "-s", "-l", LAYOUT_SHORT.get(layout, layout)])
-        self.say(f"Set active layout: {layout}\nexit {code}\n{out}")
+        if code == 0:
+            self.say(f"Set active layout to: {layout}")
+        else:
+            self.say(f"FAIL: Could not set layout (exit {code}). {out}\nMango may not be running.")
         self.refresh_status()
 
     def reload_mango(self) -> None:
         code, out = run_cmd(["mmsg", "-s", "-d", "reload_config"], timeout=10)
-        self.say(f"Mango reload requested. exit {code}\n{out}")
+        if code == 0:
+            self.say("Mango config reloaded successfully.")
+        else:
+            self.say(f"FAIL: Mango reload failed (exit {code}). {out}\nMango may not be running or mmsg not found.")
         QTimer.singleShot(900, self.refresh_all)
 
     def service_action(self, action: str, unit: str) -> None:
@@ -3208,7 +3778,10 @@ class MainWindow(QMainWindow):
             )
             return
         code, out = run_cmd(["systemctl", "--user", action, unit], timeout=25)
-        self.say(f"systemctl --user {action} {unit}\nexit {code}\n{out}")
+        if code == 0:
+            self.say(f"OK: systemctl --user {action} {unit}")
+        else:
+            self.say(f"FAIL: systemctl --user {action} {unit} (exit {code}).\n{out}\nCheck: systemctl --user status {unit}")
         self.refresh_services()
 
     POLKIT_ACTION = "io.dms-kde-workstation.sddm-autologin"
@@ -3252,7 +3825,11 @@ class MainWindow(QMainWindow):
         self.login_msg(f"[waiting] {title} - waiting for authentication...")
 
         def check():
-            rc = proc.poll()
+            # Guard against window being destroyed during auth
+            try:
+                rc = proc.poll()
+            except Exception:
+                return
             self.trace(f"run_privileged check rc={rc}")
             if rc is not None:
                 output = proc.stdout.read() if proc.stdout else ""
@@ -3270,12 +3847,14 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(500, check)
 
     def run_health(self) -> None:
-        code, out = (
-            run_cmd([str(HEALTH_SCRIPT)], timeout=45)
-            if HEALTH_SCRIPT.exists()
-            else (1, "health script missing")
-        )
-        self.say(f"Health check exit {code}\n{out}")
+        if not HEALTH_SCRIPT.exists():
+            self.say("FAIL: Health script not found at " + str(HEALTH_SCRIPT))
+            return
+        code, out = run_cmd([str(HEALTH_SCRIPT)], timeout=45)
+        if code == 0:
+            self.say(f"Health check passed.\n{out}")
+        else:
+            self.say(f"FAIL: Health check exited with code {code}.\n{out}\n\nRun manually: {HEALTH_SCRIPT}")
 
     def open_text_file(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -3304,15 +3883,46 @@ class MainWindow(QMainWindow):
         if hasattr(self, "log_box"):
             self.log_box.append(text)
             self.log_box.verticalScrollBar().setValue(self.log_box.verticalScrollBar().maximum())
+        if hasattr(self, "status_label"):
+            self.status_label.setText("")
+
+    def set_working(self, text: str) -> None:
+        """Show a working status and force the UI to repaint before a blocking call."""
+        self.say(f"[WORKING] {text}")
+        if hasattr(self, "status_label"):
+            self.status_label.setText(f"⏳  {text}")
+        QApplication.processEvents()
+
+
+SINGLE_INSTANCE_KEY = "dms-mango-settings-single-instance"
 
 
 def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("DMS Mango Workstation Settings")
+
+    # Single-instance: if already running, tell it to show itself
+    socket = QLocalSocket()
+    socket.connectToServer(SINGLE_INSTANCE_KEY)
+    if socket.waitForConnected(500):
+        # Another instance is running — ask it to show
+        socket.write(b"SHOW")
+        socket.flush()
+        socket.waitForBytesWritten(1000)
+        socket.disconnectFromServer()
+        return 0
+
     font = QFont("Inter", 10)
     app.setFont(font)
     win = MainWindow()
     win.show()
+
+    # Listen for future instances trying to start
+    from PySide6.QtNetwork import QLocalServer
+    server = QLocalServer()
+    server.newConnection.connect(lambda: win._handle_single_instance(server))
+    server.listen(SINGLE_INSTANCE_KEY)
+
     return app.exec()
 
 

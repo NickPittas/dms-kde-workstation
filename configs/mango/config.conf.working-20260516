@@ -92,7 +92,7 @@ exec-once=/home/npittas/.local/bin/dms-mango-post-startup
 
 # DMS KDE Workstation autostart parity with niri/KDE
 exec-once=systemctl --user start vicinae.service
-exec-once=systemctl --user start xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service
+exec-once=systemctl --user start xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service plasma-xdg-desktop-portal-kde.service
 # Misc
 no_border_when_single=1
 axis_bind_apply_timeout=100

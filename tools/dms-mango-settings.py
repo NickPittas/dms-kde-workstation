@@ -54,6 +54,25 @@ PORTAL_CONFIG = HOME / ".config/xdg-desktop-portal/mango-portals.conf"
 SETTINGS_BIN = HOME / ".local/bin/dms-mango-settings"
 SETTINGS_AUTOSTART = HOME / ".config/autostart/dms-mango-settings.desktop"
 POST_STARTUP_HELPER = HOME / ".local/bin/dms-mango-post-startup"
+CONSOLIDATE_SCRIPT = HOME / ".local/lib/dms-kde-workstation/sddm-consolidate-autologin.py"
+POLKIT_POLICY = Path("/usr/share/polkit-1/actions/io.dms-kde-workstation.sddm-autologin.policy")
+
+PORTAL_PACKAGES = [
+    ("xdg-desktop-portal", "Core portal framework"),
+    ("xdg-desktop-portal-wlr", "Wayland portal backend"),
+    ("xdg-desktop-portal-gtk", "GTK portal backend"),
+    ("xdg-desktop-portal-kde", "KDE portal backend"),
+]
+
+ENV_REQUIRED_VARS = {
+    "WAYLAND_DISPLAY": "wayland-1",
+    "XDG_CURRENT_DESKTOP": "mango",
+    "XDG_SESSION_TYPE": "wayland",
+    "XDG_SESSION_DESKTOP": "mango",
+    "QT_QPA_PLATFORM": "wayland",
+    "QT_QPA_PLATFORMTHEME": "qt6ct",
+    "QT_QPA_PLATFORMTHEME_QT6": "qt6ct",
+}
 
 
 def rgb_to_hex(value: str, fallback: str) -> str:
@@ -597,6 +616,7 @@ class MainWindow(QMainWindow):
             self.stack.addWidget(builder())
         self.sidebar.currentRowChanged.connect(self.stack.setCurrentIndex)
         self.sidebar.setCurrentRow(0)
+        self.login_page_index = next((i for i, (_, n, _) in enumerate(self.pages) if n == "Login"), 0)
 
         refresh = QAction("Refresh", self)
         refresh.triggered.connect(self.refresh_all)
@@ -849,11 +869,20 @@ class MainWindow(QMainWindow):
             w.setObjectName("rowTitle")
             c.addWidget(w)
         c.addSpacing(14)
+        log_card = self.card(layout, "Activity Log", "Output from setup actions. Text is selectable for copy/paste.")
         self.log_box = QTextEdit("Ready.")
         self.log_box.setReadOnly(True)
-        self.log_box.setMaximumHeight(180)
+        self.log_box.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.TextSelectableByKeyboard
+        )
+        self.log_box.setMinimumHeight(280)
         self.log_box.setObjectName("logBox")
-        c.addWidget(self.log_box)
+        log_card.addWidget(self.log_box)
+        self.status_label = QLabel("")
+        self.status_label.setObjectName("pageSub")
+        self.status_label.setStyleSheet(f"color: {MUTED};")
+        log_card.addWidget(self.status_label)
         self.add_page_actions(page, [
             ("Run Health Check", self.run_health, True, "Run the workstation verification script and show the results here."),
             ("Reload Mango", self.reload_mango, False, "Reload Mango config without logging out."),
@@ -862,47 +891,84 @@ class MainWindow(QMainWindow):
         layout.addStretch(1)
         return page
 
+    def _first_run_row(self, parent: QVBoxLayout, title: str, subtitle: str, action_text: str, action, primary: bool = False) -> QLabel:
+        """Create a dashboard row with title/subtitle, status label, and action button. Returns the status QLabel."""
+        row = SettingRow(title, subtitle)
+        status = QLabel("Checking...")
+        status.setObjectName("rowSub")
+        row.box.addWidget(status)
+        if action_text:
+            btn = self.action_button(action_text, action, primary)
+            row.box.addWidget(btn)
+        parent.addWidget(row)
+        return status
+
     def page_first_run(self) -> QWidget:
         page, layout = self.make_page(
             "First Run Setup",
-            "Use this once after installing Mango and DMS. It checks the workstation baseline and applies the missing user-level setup automatically.",
+            "System-level workstation setup. Each row shows its current status and has its own fix action. Use the buttons below for bulk operations.",
         )
-        status = self.card(
-            layout,
-            "Baseline status",
-            "This checks whether the Mango + DMS workstation files are present and whether the session is using the expected startup and theming path.",
-        )
-        self.first_run_status_label = QLabel()
-        self.first_run_status_label.setObjectName("pageSub")
-        self.first_run_status_label.setWordWrap(True)
-        status.addWidget(self.first_run_status_label)
 
-        guide = self.card(
-            layout,
-            "What this page does",
-            "The goal is: install Mango, install DMS, clone this repo, run this app, then click Apply baseline.",
+        self.first_run_rows: dict[str, QLabel] = {}
+
+        overall = self.card(layout, "Status")
+        self.first_run_overall_label = QLabel("Checking...")
+        self.first_run_overall_label.setStyleSheet(f"color: {WARNING}; font-weight: 650; font-size: 18px;")
+        overall.addWidget(self.first_run_overall_label)
+
+        env_card = self.card(layout, "System Environment", "Session and display variables via environment.d")
+        self.first_run_rows["env"] = self._first_run_row(
+            env_card, "Environment variables", "WAYLAND_DISPLAY, XDG_CURRENT_DESKTOP, QT_QPA_PLATFORM, etc.",
+            "Fix Environment", self.fix_environment, primary=True,
         )
+
+        portal_card = self.card(layout, "Portal Packages", "Required xdg-desktop-portal backends")
+        self.first_run_rows["portals"] = self._first_run_row(
+            portal_card, "Portal RPMs", "xdg-desktop-portal, wlr, gtk, kde",
+            "Install Missing", self.install_portals, primary=True,
+        )
+
+        baseline_card = self.card(layout, "Baseline Files", "Core workstation config and helpers")
+        self.first_run_rows["baseline"] = self._first_run_row(
+            baseline_card, "Baseline deployed", "Mango config, portal overrides, helpers",
+            "Apply Baseline", self.first_run_apply_baseline, primary=True,
+        )
+        self.first_run_rows["dms_startup"] = self._first_run_row(
+            baseline_card, "DMS startup in Mango", "exec-once with qt6ct env",
+            "", lambda: None,
+        )
+
+        login_card = self.card(layout, "Login / Autologin", "SDDM autologin to Mango session")
+        self.first_run_rows["login"] = self._first_run_row(
+            login_card, "Autologin", "SDDM auto-login session and user",
+            "Fix Login", self.first_run_fix_login, primary=True,
+        )
+        self.first_run_rows["script"] = self._first_run_row(
+            login_card, "Autologin script", "sddm-consolidate-autologin.py deployed",
+            "", lambda: None,
+        )
+
+        theme_card = self.card(layout, "Theme", "DMS Matugen export status")
+        self.first_run_rows["theme"] = self._first_run_row(
+            theme_card, "DMS Theme export", "GTK3/4 + QT5/6 colors exported once",
+            "Open DMS Theme", lambda: self.detach(["dms", "run", "--config-module", "theme"]),
+        )
+
         note = QLabel(
-            "Automatic:\n"
-            "• deploy Mango config\n"
-            "• make DMS start with qt6ct env\n"
-            "• install portal fixes\n"
-            "• install screenshot tools and scripts\n"
-            "• install settings app autostart\n"
-            "• install post-startup helper\n"
-            "• set up startup apps after the UI appears\n\n"
-            "Still manual:\n"
-            "• install Mango itself\n"
-            "• install DMS itself\n"
-            "• open DMS Theme/Colors once and export GTK3/4 + QT5/6"
+            "Manual steps still required:\n"
+            "• Install Mango itself\n"
+            "• Install DMS itself\n"
+            "• Export DMS Theme/Colors at least once"
         )
         note.setObjectName("pageSub")
         note.setWordWrap(True)
-        guide.addWidget(note)
+        layout.addWidget(note)
+        layout.addStretch(1)
+
         self.add_page_actions(page, [
-            ("Refresh Status", self.refresh_first_run, False, "Re-check the workstation baseline status."),
-            ("Dry-Run Setup", self.dry_run_first_run_setup, False, "Preview what the baseline installer would change without writing files."),
-            ("Apply Setup", self.apply_first_run_setup, True, "Apply the user-level Mango + DMS workstation baseline."),
+            ("Refresh Status", self.refresh_first_run, False, "Re-check all system-level items."),
+            ("Dry-Run Baseline", self.dry_run_first_run_setup, False, "Preview what the baseline installer would change."),
+            ("Apply Full Baseline", self.first_run_apply_baseline, True, "Deploy all user-level config files and helpers."),
             ("Run Health Check", self.run_health, False, "Run the workstation verification script."),
         ])
         return page
@@ -1778,6 +1844,9 @@ class MainWindow(QMainWindow):
             note.setWordWrap(True)
             layout.addWidget(note)
 
+        self.polkit_label = QLabel()
+        self.row(status_card, "Polkit policy", "Required for GUI autologin changes", self.polkit_label)
+
         conflicts_card = self.card(
             layout,
             "Autologin conflicts",
@@ -1984,35 +2053,191 @@ class MainWindow(QMainWindow):
             f"Keyboard layout: {out if code == 0 else 'unavailable'}"
         )
 
-    def refresh_first_run(self) -> None:
-        if not hasattr(self, "first_run_status_label"):
+    # ------------------------------------------------------------------
+    # First-run / system-setup helpers
+    # ------------------------------------------------------------------
+
+    def rpm_installed(self, pkg: str) -> bool:
+        code, _ = run_cmd(["rpm", "-q", pkg], timeout=10)
+        return code == 0
+
+    def env_file_status(self) -> dict[str, tuple[bool, str]]:
+        """Return {var: (ok, current_or_missing)} for required env vars."""
+        result: dict[str, tuple[bool, str]] = {}
+        if not QT_ENV_FILE.exists():
+            for var, expected in ENV_REQUIRED_VARS.items():
+                result[var] = (False, "env file missing")
+            return result
+        text = QT_ENV_FILE.read_text(errors="ignore")
+        for var, expected in ENV_REQUIRED_VARS.items():
+            m = re.search(rf"(?m)^{re.escape(var)}\s*=\s*(.*)\s*$", text)
+            if m:
+                actual = m.group(1).strip()
+                result[var] = (actual == expected, actual)
+            else:
+                result[var] = (False, "not set")
+        return result
+
+    def missing_portal_packages(self) -> list[tuple[str, str]]:
+        return [(pkg, desc) for pkg, desc in PORTAL_PACKAGES if not self.rpm_installed(pkg)]
+
+    def all_portals_ok(self) -> bool:
+        return len(self.missing_portal_packages()) == 0
+
+    def consolidate_script_ok(self) -> tuple[bool, str]:
+        if not CONSOLIDATE_SCRIPT.exists():
+            return False, "Script missing — run Apply Baseline or reinstall"
+        try:
+            code, out = run_cmd(["python3", str(CONSOLIDATE_SCRIPT)], timeout=5)
+            # Usage error (exit 2) means the script exists and is runnable
+            return True, "OK"
+        except Exception as exc:
+            return False, str(exc)
+
+    def autologin_status(self) -> tuple[str, str]:
+        """Return (state_label, detail) for SDDM autologin."""
+        conflicts = self.autologin_conflicts()
+        active = next((e for e in reversed(conflicts) if e.get("user") or e.get("session")), None)
+        if not active:
+            return "Disabled", "No autologin configured"
+        if len(conflicts) > 1:
+            return "Conflicting", f"{len(conflicts)} files have [Autologin]"
+        if active.get("session") != "mango.desktop":
+            return "Wrong session", f"Session is {active.get('session', '?')}"
+        return "OK", f"User {active.get('user')} → {active.get('session')}"
+
+    def install_portals(self) -> None:
+        missing = self.missing_portal_packages()
+        if not missing:
+            self.say("All portal packages are already installed.")
             return
-        checks: list[tuple[bool, str]] = [
-            (PROJECT.exists(), f"Project repo: {PROJECT}"),
-            (APPLY_BASELINE_SCRIPT.exists(), f"Baseline script: {APPLY_BASELINE_SCRIPT}"),
-            (bool(shutil.which("mango")), "Mango installed"),
-            (bool(shutil.which("dms")), "DMS installed"),
-            (MANGO_CONFIG.exists(), f"Mango config: {MANGO_CONFIG}"),
-            (QT_ENV_FILE.exists(), f"Qt env file: {QT_ENV_FILE}"),
-            (PORTAL_OVERRIDE.exists(), f"Portal override: {PORTAL_OVERRIDE}"),
-            (PORTAL_CONFIG.exists(), f"Portal config: {PORTAL_CONFIG}"),
-            (POST_STARTUP_HELPER.exists(), f"Post-startup helper: {POST_STARTUP_HELPER}"),
-            (STARTUP_JSON.exists(), f"Startup config: {STARTUP_JSON}"),
-            (SETTINGS_BIN.exists(), f"Settings app installed: {SETTINGS_BIN}"),
-            (SETTINGS_AUTOSTART.exists(), f"Settings app autostart: {SETTINGS_AUTOSTART}"),
+        pkg_list = " ".join(pkg for pkg, _ in missing)
+        if QMessageBox.question(
+            self,
+            "Install portal packages",
+            f"These portal packages are missing:\n\n" + "\n".join(f"  • {pkg} — {desc}" for pkg, desc in missing)
+            + f"\n\nInstall them now with dnf?\n\nCommand: pkexec dnf install -y {pkg_list}",
+        ) != QMessageBox.StandardButton.Yes:
+            self.say("Cancelled portal installation.")
+            return
+        self.set_working("Installing portal packages via dnf...")
+
+        def do_install() -> None:
+            code, out = run_cmd(["pkexec", "dnf", "install", "-y"] + [pkg for pkg, _ in missing], timeout=300)
+            if code == 0:
+                self.say(f"OK: Portal packages installed.\n{out}")
+            else:
+                self.say(f"FAIL: Portal installation failed (exit {code}).\n{out}")
+            self.refresh_first_run()
+
+        QTimer.singleShot(100, do_install)
+
+    def fix_environment(self) -> None:
+        if QMessageBox.question(
+            self,
+            "Fix environment",
+            f"Rewrite {QT_ENV_FILE} with the required session and display variables?\n\n"
+            "This sets WAYLAND_DISPLAY, XDG_CURRENT_DESKTOP, XDG_SESSION_TYPE, QT_QPA_PLATFORM, and Qt theming vars system-wide via environment.d.",
+        ) != QMessageBox.StandardButton.Yes:
+            self.say("Cancelled environment fix.")
+            return
+        self.set_working("Writing environment file...")
+        backup = BACKUP_ROOT / dt.datetime.now().strftime("%Y%m%d-%H%M%S") / "environment.d" / "90-dms-kde-qt.conf"
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        if QT_ENV_FILE.exists():
+            shutil.copy2(QT_ENV_FILE, backup)
+        QT_ENV_FILE.parent.mkdir(parents=True, exist_ok=True)
+        lines = [
+            "# DMS KDE Workstation: session and display environment for Mango Wayland.",
+            "# These are imported by systemd --user and affect user services + app launches.",
         ]
+        for var, value in ENV_REQUIRED_VARS.items():
+            lines.append(f"{var}={value}")
+        QT_ENV_FILE.write_text("\n".join(lines) + "\n")
+        self.say(f"OK: Environment file written.\nPrevious version backed up to: {backup}\n\nLog out and back in for all services to pick up the new values.")
+        self.refresh_first_run()
+
+    def first_run_apply_baseline(self) -> None:
+        if QMessageBox.question(
+            self,
+            "Apply First Run Setup",
+            "Apply the full DMS Mango workstation baseline now?\n\nThis writes user config files and deploys helpers.",
+        ) != QMessageBox.StandardButton.Yes:
+            self.say("Cancelled.")
+            return
+        self.set_working("Applying workstation baseline...")
+
+        def do_apply() -> None:
+            self.run_baseline_script(["--apply"], "Applied workstation baseline")
+
+        QTimer.singleShot(100, do_apply)
+
+    def first_run_fix_login(self) -> None:
+        """Jump to the Login page so the user can use the proper controls there."""
+        self.stack.setCurrentIndex(self.login_page_index)
+        self.sidebar.setCurrentRow(self.login_page_index)
+        self.refresh_login()
+        self.say("Switched to Login page. Use 'Enable & Consolidate Autologin' there.")
+
+    # ------------------------------------------------------------------
+
+    def refresh_first_run(self) -> None:
+        if not hasattr(self, "first_run_rows"):
+            return
+        # Environment
+        env_status = self.env_file_status()
+        env_all_ok = all(ok for ok, _ in env_status.values())
+        env_text = "OK" if env_all_ok else f"{sum(1 for ok, _ in env_status.values() if ok)}/{len(env_status)} vars OK"
+        self._update_first_run_row("env", env_all_ok, env_text)
+
+        # Portals
+        missing_portals = self.missing_portal_packages()
+        portal_text = "OK" if not missing_portals else f"{len(missing_portals)} missing"
+        self._update_first_run_row("portals", not missing_portals, portal_text)
+
+        # Baseline files
+        baseline_ok = (
+            MANGO_CONFIG.exists()
+            and PORTAL_OVERRIDE.exists()
+            and PORTAL_CONFIG.exists()
+            and POST_STARTUP_HELPER.exists()
+            and STARTUP_JSON.exists()
+            and SETTINGS_BIN.exists()
+            and SETTINGS_AUTOSTART.exists()
+        )
+        self._update_first_run_row("baseline", baseline_ok, "OK" if baseline_ok else "Missing files")
+
+        # DMS startup line in Mango config
         mango_line = "exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run"
-        checks.append((mango_line in self.cfg.text, "Mango starts DMS with explicit qt6ct env"))
+        dms_startup_ok = mango_line in self.cfg.text
+        self._update_first_run_row("dms_startup", dms_startup_ok, "OK" if dms_startup_ok else "Missing exec-once")
+
+        # Autologin
+        login_state, login_detail = self.autologin_status()
+        login_ok = login_state == "OK"
+        self._update_first_run_row("login", login_ok, f"{login_state}: {login_detail}")
+
+        # Consolidate script
+        script_ok, script_detail = self.consolidate_script_ok()
+        self._update_first_run_row("script", script_ok, script_detail)
+
+        # Theme export
         theme_export_done = (HOME / ".local/share/color-schemes/DankMatugen.colors").exists()
-        checks.append((theme_export_done, "DMS Theme/Colors export completed once"))
-        ok_count = sum(1 for ok, _ in checks if ok)
-        lines = [f"{ok_count}/{len(checks)} checks passing", ""]
-        for ok, label in checks:
-            lines.append(("[OK] " if ok else "[MISSING] ") + label)
-        lines.append("")
-        if not theme_export_done:
-            lines.append("Manual step remaining: open DMS Theme/Colors and export GTK3/4 + QT5/6 once.")
-        self.first_run_status_label.setText("\n".join(lines))
+        self._update_first_run_row("theme", theme_export_done, "OK" if theme_export_done else "Not exported yet")
+
+        # Overall
+        all_ok = env_all_ok and not missing_portals and baseline_ok and dms_startup_ok and login_ok and script_ok
+        self.first_run_overall_label.setText(
+            f"Overall: {'All checks passing' if all_ok else 'Some items need attention'}"
+        )
+        self.first_run_overall_label.setStyleSheet(f"color: {ACCENT if all_ok else WARNING}; font-weight: 650; font-size: 18px;")
+
+    def _update_first_run_row(self, key: str, ok: bool, detail: str) -> None:
+        status_label = self.first_run_rows.get(key)
+        if status_label is None:
+            return
+        status_label.setText(f"{'OK' if ok else 'NEEDS FIX'} — {detail}")
+        status_label.setStyleSheet(f"color: {ACCENT if ok else WARNING};")
 
     def run_baseline_script(self, args: list[str], title: str) -> None:
         if not APPLY_BASELINE_SCRIPT.exists():
@@ -2026,17 +2251,12 @@ class MainWindow(QMainWindow):
         self.refresh_first_run()
 
     def dry_run_first_run_setup(self) -> None:
-        self.run_baseline_script([], "Baseline dry-run")
+        self.set_working("Running baseline dry-run...")
 
-    def apply_first_run_setup(self) -> None:
-        if QMessageBox.question(
-            self,
-            "Apply First Run Setup",
-            "Apply the DMS Mango workstation baseline now? This writes user config files in your home directory.",
-        ) != QMessageBox.StandardButton.Yes:
-            self.say("Cancelled First Run Setup.")
-            return
-        self.run_baseline_script(["--apply"], "Applied workstation baseline")
+        def do_dry_run() -> None:
+            self.run_baseline_script([], "Baseline dry-run")
+
+        QTimer.singleShot(100, do_dry_run)
 
     def refresh_controls(self) -> None:
         for key, widget in self.controls.items():
@@ -3050,6 +3270,14 @@ class MainWindow(QMainWindow):
         if hasattr(self, "display_manager_label"):
             self.display_manager_label.setText(dm or "not detected")
 
+        if hasattr(self, "polkit_label"):
+            if POLKIT_POLICY.exists():
+                self.polkit_label.setText("Installed")
+                self.polkit_label.setStyleSheet(f"color: {ACCENT};")
+            else:
+                self.polkit_label.setText("MISSING — run: sudo cp <repo>/configs/polkit/io.dms-kde-workstation.sddm-autologin.policy /usr/share/polkit-1/actions/")
+                self.polkit_label.setStyleSheet(f"color: {WARNING};")
+
         conflicts = self.autologin_conflicts()
         managed = next((e for e in conflicts if "dms-mango-autologin" in e["path"]), None)
         active = next((e for e in reversed(conflicts) if e.get("user") or e.get("session")), None)
@@ -3108,6 +3336,13 @@ class MainWindow(QMainWindow):
 
     def enable_autologin(self) -> None:
         self.trace("enable_autologin CALLED")
+        if not Path(self.CONSOLIDATE_SCRIPT).exists():
+            self.login_msg(
+                f"ERROR: Consolidate script is missing.\n\n"
+                f"Expected: {self.CONSOLIDATE_SCRIPT}\n\n"
+                f"Run 'Apply Baseline' on the First Run page to deploy it, then try again."
+            )
+            return
         user = self.controls["__login_user"].text().strip()
         session = self.session_combo.currentData() if hasattr(self, "session_combo") else "mango.desktop"
         if not session:
@@ -3143,6 +3378,13 @@ class MainWindow(QMainWindow):
 
     def disable_autologin(self) -> None:
         self.trace("disable_autologin CALLED")
+        if not Path(self.CONSOLIDATE_SCRIPT).exists():
+            self.login_msg(
+                f"ERROR: Consolidate script is missing.\n\n"
+                f"Expected: {self.CONSOLIDATE_SCRIPT}\n\n"
+                f"Run 'Apply Baseline' on the First Run page to deploy it, then try again."
+            )
+            return
         conflicts = self.autologin_conflicts()
         detail = "\n".join(f"  • {c['path']}: {c['session']}" for c in conflicts) if conflicts else "  (none found)"
         if QMessageBox.question(
@@ -3641,6 +3883,15 @@ class MainWindow(QMainWindow):
         if hasattr(self, "log_box"):
             self.log_box.append(text)
             self.log_box.verticalScrollBar().setValue(self.log_box.verticalScrollBar().maximum())
+        if hasattr(self, "status_label"):
+            self.status_label.setText("")
+
+    def set_working(self, text: str) -> None:
+        """Show a working status and force the UI to repaint before a blocking call."""
+        self.say(f"[WORKING] {text}")
+        if hasattr(self, "status_label"):
+            self.status_label.setText(f"⏳  {text}")
+        QApplication.processEvents()
 
 
 SINGLE_INSTANCE_KEY = "dms-mango-settings-single-instance"

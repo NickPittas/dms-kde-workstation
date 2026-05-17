@@ -84,6 +84,34 @@ install_packages() {
   run sudo dnf install -y "${fedora_packages[@]}"
 }
 
+install_polkit_policy() {
+  local src="$ROOT/configs/polkit/io.dms-kde-workstation.sddm-autologin.policy"
+  local target="/usr/share/polkit-1/actions/io.dms-kde-workstation.sddm-autologin.policy"
+  if [ ! -f "$src" ]; then
+    log "WARNING: polkit policy source missing: $src"
+    return 0
+  fi
+  if [ -f "$target" ] && diff -q "$src" "$target" >/dev/null 2>&1; then
+    log "Polkit policy already up to date: $target"
+    return 0
+  fi
+  if [ "$APPLY" -eq 1 ]; then
+    if pkexec tee "$target" >/dev/null < "$src" 2>&1; then
+      pkexec chmod 644 "$target"
+      log "Installed polkit policy: $target"
+    else
+      log ""
+      log "WARNING: Could not install polkit policy automatically."
+      log "Run this command manually to enable autologin via the GUI:"
+      log "  sudo cp $src $target"
+      log "  sudo chmod 644 $target"
+      log ""
+    fi
+  else
+    log "DRY-RUN: install polkit policy $src -> $target"
+  fi
+}
+
 apply_files() {
   install_file "$ROOT/configs/mango/config.conf.working-20260516" \
     "$HOME/.config/mango/config.conf" 0644
@@ -119,6 +147,9 @@ apply_files() {
   install_file "$ROOT/scripts/apply-dms-launch-overrides" \
     "$HOME/.local/bin/apply-dms-launch-overrides" 0755
 
+  install_file "$ROOT/configs/lib/sddm-consolidate-autologin.py" \
+    "$HOME/.local/lib/dms-kde-workstation/sddm-consolidate-autologin.py" 0755
+
   install_file "$ROOT/configs/dms-kde-workstation/startup.json" \
     "$HOME/.config/dms-kde-workstation/startup.json" 0644
 
@@ -138,7 +169,13 @@ apply_user_actions() {
   run systemctl --user daemon-reload
 
   if command -v systemctl >/dev/null 2>&1; then
-    run systemctl --user restart xdg-desktop-portal.service xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service
+    for svc in xdg-desktop-portal.service xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service; do
+      if systemctl --user list-unit-files "$svc" >/dev/null 2>&1; then
+        run systemctl --user restart "$svc"
+      else
+        log "Skipping $svc: not installed"
+      fi
+    done
   fi
 
   run "$HOME/.local/bin/apply-dms-launch-overrides"
@@ -178,6 +215,7 @@ else
 fi
 
 apply_files
+install_polkit_policy
 apply_user_actions
 
 cat <<EOF
