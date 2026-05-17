@@ -2,9 +2,11 @@
 
 Date: 2026-05-16
 
+> Historical note: this document records one machine's tested defaults. It is **not** the current automatic baseline. Default apps are now user-owned choices configured through the app's **Default Apps** page.
+
 ## Goal
 
-Make DMS KDE Workstation use KDE/Qt apps for local workstation files while preserving user choices for browser and code editor.
+Document one tested set of workstation defaults without forcing them on every user.
 
 ## Applied defaults
 
@@ -44,7 +46,7 @@ Revert:
 
 ## Installer implication
 
-The installer should set these defaults only after apps are installed and tested. It should also expose a UI to change:
+The installer should **not** force these defaults automatically. It should only expose a UI to change:
 
 - browser
 - terminal

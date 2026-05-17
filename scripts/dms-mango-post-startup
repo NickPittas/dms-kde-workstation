@@ -17,13 +17,8 @@ from pathlib import Path
 HOME = Path.home()
 CONFIG = HOME / ".config/dms-kde-workstation/startup.json"
 DEFAULT_CONFIG = {
-    "tray_ready_services": [
-        "dropbox.service",
-        "app-dev.lizardbyte.app.Sunshine.service",
-    ],
-    "post_start_commands": [
-        str(HOME / ".local/bin/dms-workstation-service-indicator"),
-    ],
+    "tray_ready_services": [],
+    "post_start_commands": [],
     "wait_timeout_seconds": 30,
 }
 LOG = HOME / ".local/state/dms-kde-workstation/mango-post-startup.log"

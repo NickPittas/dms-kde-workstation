@@ -33,11 +33,9 @@ configs/mango/config.conf.working-20260516
 
 ## Key working features
 
-- DMS starts with `exec-once=dms run`.
-- Dropbox autostarts.
-- Sunshine autostarts.
+- DMS starts with `exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run`.
 - Vicinae autostarts.
-- wlr/gtk portals start.
+- portal overrides/config can be deployed before first Mango login.
 - KDE/Qt apps theme correctly after DMS baseline export.
 - Scroller layout is configured.
 - Super+mouse wheel navigation works.
@@ -72,3 +70,5 @@ Super+right drag -> resize
 ## Architectural decision
 
 Mango should become the primary candidate for the creative workstation installer. niri remains useful but should be marked secondary/experimental because of DnD failures in Blender/Nuke.
+
+Safety note: users must not switch to Mango until preflight checks, baseline apply, and first-login readiness all pass from a currently working session.

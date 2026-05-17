@@ -54,6 +54,10 @@ PORTAL_CONFIG = HOME / ".config/xdg-desktop-portal/mango-portals.conf"
 SETTINGS_BIN = HOME / ".local/bin/dms-mango-settings"
 SETTINGS_AUTOSTART = HOME / ".config/autostart/dms-mango-settings.desktop"
 POST_STARTUP_HELPER = HOME / ".local/bin/dms-mango-post-startup"
+FIRST_LOGIN_READINESS_SCRIPT = PROJECT / "scripts/test-first-mango-readiness"
+FRESH_VALIDATION_CHECKLIST = PROJECT / "docs/fresh-machine-validation-checklist.md"
+FRESH_VALIDATION_RESULTS_TEMPLATE = PROJECT / "docs/fresh-machine-validation-results-template.md"
+MANGO_SESSION_FILE = Path("/usr/share/wayland-sessions/mango.desktop")
 CONSOLIDATE_SCRIPT = HOME / ".local/lib/dms-kde-workstation/sddm-consolidate-autologin.py"
 POLKIT_POLICY = Path("/usr/share/polkit-1/actions/io.dms-kde-workstation.sddm-autologin.policy")
 
@@ -65,13 +69,10 @@ PORTAL_PACKAGES = [
 ]
 
 ENV_REQUIRED_VARS = {
-    "WAYLAND_DISPLAY": "wayland-1",
-    "XDG_CURRENT_DESKTOP": "mango",
-    "XDG_SESSION_TYPE": "wayland",
-    "XDG_SESSION_DESKTOP": "mango",
     "QT_QPA_PLATFORM": "wayland",
     "QT_QPA_PLATFORMTHEME": "qt6ct",
     "QT_QPA_PLATFORMTHEME_QT6": "qt6ct",
+    "ELECTRON_OZONE_PLATFORM_HINT": "auto",
 }
 
 
@@ -906,7 +907,7 @@ class MainWindow(QMainWindow):
     def page_first_run(self) -> QWidget:
         page, layout = self.make_page(
             "First Run Setup",
-            "System-level workstation setup. Each row shows its current status and has its own fix action. Use the buttons below for bulk operations.",
+            "Run this from your current working KDE/niri session before you ever log into Mango. Each row shows current status and safe next actions.",
         )
 
         self.first_run_rows: dict[str, QLabel] = {}
@@ -916,9 +917,23 @@ class MainWindow(QMainWindow):
         self.first_run_overall_label.setStyleSheet(f"color: {WARNING}; font-weight: 650; font-size: 18px;")
         overall.addWidget(self.first_run_overall_label)
 
-        env_card = self.card(layout, "System Environment", "Session and display variables via environment.d")
+        prereq_card = self.card(layout, "Hard prerequisites", "These must be installed before you switch to the Mango session.")
+        self.first_run_rows["mango"] = self._first_run_row(
+            prereq_card, "Mango installed", "Required compositor package and session entry",
+            "Show Install Help", self.show_install_prereq_help,
+        )
+        self.first_run_rows["dms"] = self._first_run_row(
+            prereq_card, "DMS installed", "The shell itself must already be installed",
+            "Show Install Help", self.show_install_prereq_help,
+        )
+        self.first_run_rows["quickshell"] = self._first_run_row(
+            prereq_card, "Quickshell available", "Needed by DMS to launch the shell UI",
+            "Show Install Help", self.show_install_prereq_help,
+        )
+
+        env_card = self.card(layout, "Toolkit Environment", "Stable Qt/Electron toolkit variables via environment.d")
         self.first_run_rows["env"] = self._first_run_row(
-            env_card, "Environment variables", "WAYLAND_DISPLAY, XDG_CURRENT_DESKTOP, QT_QPA_PLATFORM, etc.",
+            env_card, "Environment variables", "QT_QPA_PLATFORM, qt6ct, Electron Wayland hint",
             "Fix Environment", self.fix_environment, primary=True,
         )
 
@@ -936,6 +951,10 @@ class MainWindow(QMainWindow):
         self.first_run_rows["dms_startup"] = self._first_run_row(
             baseline_card, "DMS startup in Mango", "exec-once with qt6ct env",
             "", lambda: None,
+        )
+        self.first_run_rows["dms_ownership"] = self._first_run_row(
+            baseline_card, "DMS startup ownership", "Avoid running both dms.service and Mango exec-once at the same time",
+            "Fix Startup Ownership", self.fix_dms_startup_ownership,
         )
 
         login_card = self.card(layout, "Login / Autologin", "SDDM autologin to Mango session")
@@ -955,10 +974,12 @@ class MainWindow(QMainWindow):
         )
 
         note = QLabel(
-            "Manual steps still required:\n"
-            "• Install Mango itself\n"
-            "• Install DMS itself\n"
-            "• Export DMS Theme/Colors at least once"
+            "Safe order:\n"
+            "• Stay in your current working KDE/niri session\n"
+            "• Install Mango and DMS first\n"
+            "• Apply this baseline and make sure all blockers are green\n"
+            "• Only then log out and choose Mango in SDDM\n"
+            "• After the first successful Mango login, export DMS Theme/Colors once"
         )
         note.setObjectName("pageSub")
         note.setWordWrap(True)
@@ -968,7 +989,10 @@ class MainWindow(QMainWindow):
         self.add_page_actions(page, [
             ("Refresh Status", self.refresh_first_run, False, "Re-check all system-level items."),
             ("Dry-Run Baseline", self.dry_run_first_run_setup, False, "Preview what the baseline installer would change."),
-            ("Apply Full Baseline", self.first_run_apply_baseline, True, "Deploy all user-level config files and helpers."),
+            ("Apply Full Baseline", self.first_run_apply_baseline, True, "Deploy all user-level config files and helpers. Refuses to run while hard prerequisites are missing."),
+            ("Check Ready for First Mango Login", self.run_first_login_readiness, False, "Verify from your current working session whether it is safe to log out and choose Mango."),
+            ("Open Validation Checklist", lambda: self.open_text_file(FRESH_VALIDATION_CHECKLIST), False, "Open the fresh-machine validation checklist used to verify the full install flow."),
+            ("Open Results Template", lambda: self.open_text_file(FRESH_VALIDATION_RESULTS_TEMPLATE), False, "Open the template used to record a real fresh-machine validation run."),
             ("Run Health Check", self.run_health, False, "Run the workstation verification script."),
         ])
         return page
@@ -1287,9 +1311,34 @@ class MainWindow(QMainWindow):
     def page_keybindings(self) -> QWidget:
         page, layout = self.make_page(
             "Keybindings",
-            "Create Mango shortcuts with controls instead of raw config lines. Raw editing remains available only as an advanced escape hatch.",
+            "Create Mango compositor shortcuts with controls instead of raw config lines. This page does not manage DMS shortcuts; use DMS for shell-owned actions.",
         )
         c = self.card(layout, "Existing shortcuts", "Select a shortcut to inspect or remove it. Duplicate keys are flagged.")
+
+        # Search + sort bar
+        search_row = QHBoxLayout()
+        self.keybind_search = QLineEdit()
+        self.keybind_search.setPlaceholderText("🔍  Search shortcuts…")
+        self.keybind_search.setClearButtonEnabled(True)
+        self.keybind_search.textChanged.connect(self._filter_keybinds)
+        search_row.addWidget(self.keybind_search, 1)
+        self.keybind_sort_label = QLabel("Sort:")
+        self.keybind_sort_label.setObjectName("pageSub")
+        search_row.addWidget(self.keybind_sort_label)
+        for label, mode in [("A→Z", "alpha"), ("Modifier", "mod"), ("Action", "action")]:
+            btn = QPushButton(label)
+            btn.setFixedWidth(80)
+            btn.setCheckable(True)
+            btn.setProperty("sort_mode", mode)
+            btn.clicked.connect(lambda checked, m=mode: self._sort_keybinds(m))
+            search_row.addWidget(btn)
+        self.keybind_sort_buttons: list[QPushButton] = []
+        for i in range(search_row.count()):
+            w = search_row.itemAt(i).widget()
+            if isinstance(w, QPushButton):
+                self.keybind_sort_buttons.append(w)
+        c.addLayout(search_row)
+
         self.keybinds_list = QListWidget()
         self.keybinds_list.setMinimumHeight(260)
         self.keybinds_list.itemClicked.connect(self.load_selected_keybinding_into_editor)
@@ -1298,6 +1347,8 @@ class MainWindow(QMainWindow):
         self.keybind_duplicate_label.setObjectName("pageSub")
         self.keybind_duplicate_label.setWordWrap(True)
         c.addWidget(self.keybind_duplicate_label)
+        # Internal storage for unfiltered/sorted bindings
+        self._keybind_items: list[tuple[str, str]] = []  # [(raw_line, display_text)]
 
         editor = self.card(layout, "Add shortcut", "Choose modifiers, key, and action. This writes a normal Mango bind/axisbind line behind the scenes.")
         mod_row = QHBoxLayout()
@@ -1528,11 +1579,14 @@ class MainWindow(QMainWindow):
 
     def page_services(self) -> QWidget:
         page, layout = self.make_page(
-            "Services", "Start, stop, restart, and inspect workstation user services."
+            "Services", "Start, stop, restart, and inspect workstation user services that actually exist on this machine."
         )
         c = self.card(layout, "User services")
         self.service_rows.clear()
+        visible = 0
         for label, unit in SERVICES:
+            if not self.user_unit_exists(unit):
+                continue
             r = SettingRow(label, unit)
             status = QLabel("unknown")
             status.setMinimumWidth(80)
@@ -1545,6 +1599,12 @@ class MainWindow(QMainWindow):
                 r.add_control(btn)
             c.addWidget(r)
             self.service_rows.append((unit, status))
+            visible += 1
+        if visible == 0:
+            note = QLabel("No known workstation user services were detected on this machine yet.")
+            note.setObjectName("pageSub")
+            note.setWordWrap(True)
+            c.addWidget(note)
         return page
 
     def page_portals(self) -> QWidget:
@@ -1662,7 +1722,7 @@ class MainWindow(QMainWindow):
     def page_default_apps(self) -> QWidget:
         page, layout = self.make_page(
             "Default Apps",
-            "KDE/Qt-first default applications with category rows, app dropdowns, backup, and verification.",
+            "Choose your own default applications with category rows, app dropdowns, backup, and verification. Baseline install does not force personal app choices.",
         )
         c = self.card(
             layout,
@@ -1729,7 +1789,7 @@ class MainWindow(QMainWindow):
         row = QHBoxLayout()
         start = QPushButton("Start recording command in terminal")
         start.setObjectName("primary")
-        start.clicked.connect(lambda: self.detach(["ghostty", "-e", "bash", "-lc", self.recording_command.text() + "; read -p 'Press Enter...'"]))
+        start.clicked.connect(lambda: self.detach(self.get_terminal() + ["-e", "bash", "-lc", self.recording_command.text() + "; read -p 'Press Enter...'"]))
         row.addWidget(start)
         row.addStretch(1)
         rec.addLayout(row)
@@ -1750,7 +1810,7 @@ class MainWindow(QMainWindow):
             ("Open Sunshine UI", lambda: self.detach(["xdg-open", "https://localhost:47990"]), True),
             ("Restart Sunshine", lambda: self.service_action("restart", "app-dev.lizardbyte.app.Sunshine.service"), False),
             ("Open RustDesk", lambda: self.detach(["rustdesk"]), False),
-            ("Run nvidia-smi", lambda: self.detach(["ghostty", "-e", "bash", "-lc", "nvidia-smi; read -p 'Press Enter...'"]), False),
+            ("Run nvidia-smi", lambda: self.detach(self.get_terminal() + ["-e", "bash", "-lc", "nvidia-smi; read -p 'Press Enter...'"]), False),
         ]:
             btn = QPushButton(text)
             if primary:
@@ -2061,6 +2121,67 @@ class MainWindow(QMainWindow):
         code, _ = run_cmd(["rpm", "-q", pkg], timeout=10)
         return code == 0
 
+    def command_exists(self, name: str) -> bool:
+        return shutil.which(name) is not None
+
+    def user_unit_exists(self, unit: str) -> bool:
+        code, _ = run_cmd(["systemctl", "--user", "list-unit-files", unit], timeout=8)
+        return code == 0
+
+    def first_run_blockers(self) -> list[str]:
+        blockers: list[str] = []
+        if not self.command_exists("mango"):
+            blockers.append("Mango is not installed yet.")
+        if not MANGO_SESSION_FILE.exists():
+            blockers.append("Mango session entry is missing (/usr/share/wayland-sessions/mango.desktop).")
+        if not self.command_exists("dms"):
+            blockers.append("DMS is not installed yet.")
+        if not self.command_exists("qs") and not self.command_exists("quickshell"):
+            blockers.append("Quickshell is missing, so DMS cannot launch its shell UI.")
+        if self.missing_portal_packages():
+            blockers.append("Required portal packages are still missing.")
+        if self.dms_startup_ownership_conflict():
+            blockers.append("DMS startup ownership conflict: dms.service is enabled while Mango also starts dms run.")
+        return blockers
+
+    def show_install_prereq_help(self) -> None:
+        self.say(
+            "Install prerequisites from your current working session before switching to Mango.\n\n"
+            "Fedora DMS install (official DMS docs):\n"
+            "  sudo dnf copr enable avengemedia/dms\n"
+            "  sudo dnf install dms\n\n"
+            "Fedora Mango install (official Mango docs):\n"
+            "  sudo dnf install --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release\n"
+            "  sudo dnf install mangowm\n\n"
+            "Then return here, refresh status, apply the baseline, and only switch to Mango after all hard prerequisites are green."
+        )
+
+    def dms_service_enabled(self) -> bool:
+        code, _ = run_cmd(["systemctl", "--user", "is-enabled", "dms.service"], timeout=8)
+        return code == 0
+
+    def dms_startup_ownership_conflict(self) -> bool:
+        mango_line = "exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run"
+        return self.dms_service_enabled() and mango_line in self.cfg.text
+
+    def fix_dms_startup_ownership(self) -> None:
+        if not self.dms_startup_ownership_conflict():
+            self.say("DMS startup ownership already looks safe for Mango.")
+            return
+        if QMessageBox.question(
+            self,
+            "Fix DMS startup ownership",
+            "Disable dms.service autostart so Mango's explicit dms run line is the only DMS startup path?\n\nThis does not stop your current session immediately. It prevents future double-start conflicts.",
+        ) != QMessageBox.StandardButton.Yes:
+            self.say("Cancelled DMS startup ownership fix.")
+            return
+        code, out = run_cmd(["systemctl", "--user", "disable", "dms.service"], timeout=25)
+        if code == 0:
+            self.say("OK: Disabled dms.service autostart for future sessions. Mango will use its explicit dms run startup line.\n\nLog out/in later to verify the new startup path.\n" + out)
+        else:
+            self.say("FAIL: Could not disable dms.service autostart.\n\nDo not switch to Mango yet. Run manually from your current session:\n  systemctl --user disable dms.service\n\nDetails:\n" + out)
+        self.refresh_first_run()
+
     def env_file_status(self) -> dict[str, tuple[bool, str]]:
         """Return {var: (ok, current_or_missing)} for required env vars."""
         result: dict[str, tuple[bool, str]] = {}
@@ -2136,8 +2257,8 @@ class MainWindow(QMainWindow):
         if QMessageBox.question(
             self,
             "Fix environment",
-            f"Rewrite {QT_ENV_FILE} with the required session and display variables?\n\n"
-            "This sets WAYLAND_DISPLAY, XDG_CURRENT_DESKTOP, XDG_SESSION_TYPE, QT_QPA_PLATFORM, and Qt theming vars system-wide via environment.d.",
+            f"Rewrite {QT_ENV_FILE} with the required toolkit variables?\n\n"
+            "This writes only stable Qt/Electron toolkit variables. It does not hardcode dynamic session values like WAYLAND_DISPLAY or compositor identity.",
         ) != QMessageBox.StandardButton.Yes:
             self.say("Cancelled environment fix.")
             return
@@ -2148,8 +2269,11 @@ class MainWindow(QMainWindow):
             shutil.copy2(QT_ENV_FILE, backup)
         QT_ENV_FILE.parent.mkdir(parents=True, exist_ok=True)
         lines = [
-            "# DMS KDE Workstation: session and display environment for Mango Wayland.",
-            "# These are imported by systemd --user and affect user services + app launches.",
+            "# DMS KDE Workstation: toolkit environment for Mango + DMS.",
+            "# Keep only stable toolkit variables here.",
+            "# Do NOT hardcode dynamic session variables like WAYLAND_DISPLAY here.",
+            "# Do NOT hardcode compositor identity here when multiple sessions may exist.",
+            "# Mango is responsible for its runtime session environment.",
         ]
         for var, value in ENV_REQUIRED_VARS.items():
             lines.append(f"{var}={value}")
@@ -2158,10 +2282,19 @@ class MainWindow(QMainWindow):
         self.refresh_first_run()
 
     def first_run_apply_baseline(self) -> None:
+        blockers = self.first_run_blockers()
+        if blockers:
+            self.say(
+                "FAIL: First Run Setup is blocked.\n\n"
+                + "Fix these first from your current working session:\n"
+                + "\n".join(f"  • {item}" for item in blockers)
+                + "\n\nUse 'Show Install Help' and 'Install Missing' where offered. Do not switch to Mango yet."
+            )
+            return
         if QMessageBox.question(
             self,
             "Apply First Run Setup",
-            "Apply the full DMS Mango workstation baseline now?\n\nThis writes user config files and deploys helpers.",
+            "Apply the full DMS Mango workstation baseline now?\n\nThis writes user config files and deploys helpers. Do this before your first Mango login.",
         ) != QMessageBox.StandardButton.Yes:
             self.say("Cancelled.")
             return
@@ -2184,6 +2317,19 @@ class MainWindow(QMainWindow):
     def refresh_first_run(self) -> None:
         if not hasattr(self, "first_run_rows"):
             return
+        mango_ok = self.command_exists("mango") and MANGO_SESSION_FILE.exists()
+        if self.command_exists("mango") and not MANGO_SESSION_FILE.exists():
+            mango_detail = "mango installed, but session entry missing"
+        else:
+            mango_detail = "OK" if mango_ok else "Install mangowm first"
+        self._update_first_run_row("mango", mango_ok, mango_detail)
+
+        dms_ok = self.command_exists("dms")
+        self._update_first_run_row("dms", dms_ok, "OK" if dms_ok else "Install DMS first")
+
+        quickshell_ok = self.command_exists("qs") or self.command_exists("quickshell")
+        self._update_first_run_row("quickshell", quickshell_ok, "OK" if quickshell_ok else "Missing qs/quickshell")
+
         # Environment
         env_status = self.env_file_status()
         env_all_ok = all(ok for ok, _ in env_status.values())
@@ -2212,6 +2358,10 @@ class MainWindow(QMainWindow):
         dms_startup_ok = mango_line in self.cfg.text
         self._update_first_run_row("dms_startup", dms_startup_ok, "OK" if dms_startup_ok else "Missing exec-once")
 
+        ownership_ok = not self.dms_startup_ownership_conflict()
+        ownership_detail = "OK" if ownership_ok else "dms.service enabled alongside Mango dms run"
+        self._update_first_run_row("dms_ownership", ownership_ok, ownership_detail)
+
         # Autologin
         login_state, login_detail = self.autologin_status()
         login_ok = login_state == "OK"
@@ -2226,10 +2376,16 @@ class MainWindow(QMainWindow):
         self._update_first_run_row("theme", theme_export_done, "OK" if theme_export_done else "Not exported yet")
 
         # Overall
-        all_ok = env_all_ok and not missing_portals and baseline_ok and dms_startup_ok and login_ok and script_ok
-        self.first_run_overall_label.setText(
-            f"Overall: {'All checks passing' if all_ok else 'Some items need attention'}"
-        )
+        blockers = self.first_run_blockers()
+        all_ok = not blockers and env_all_ok and not missing_portals and baseline_ok and dms_startup_ok and login_ok and script_ok
+        if blockers:
+            self.first_run_overall_label.setText(
+                "BLOCKED — do not switch to Mango yet. Finish the hard prerequisites first."
+            )
+        else:
+            self.first_run_overall_label.setText(
+                f"Overall: {'Ready for first Mango login after apply' if all_ok else 'Some items still need attention before session switch'}"
+            )
         self.first_run_overall_label.setStyleSheet(f"color: {ACCENT if all_ok else WARNING}; font-weight: 650; font-size: 18px;")
 
     def _update_first_run_row(self, key: str, ok: bool, detail: str) -> None:
@@ -2241,13 +2397,19 @@ class MainWindow(QMainWindow):
 
     def run_baseline_script(self, args: list[str], title: str) -> None:
         if not APPLY_BASELINE_SCRIPT.exists():
-            self.say(f"FAIL: Baseline script not found: {APPLY_BASELINE_SCRIPT}")
+            self.say(f"FAIL: Baseline script not found: {APPLY_BASELINE_SCRIPT}\nDo not switch to Mango. Fix the repo checkout first.")
             return
         code, out = run_cmd([str(APPLY_BASELINE_SCRIPT), *args], timeout=180)
         if code == 0:
-            self.say(f"OK: {title}\n{out}")
+            self.say(
+                f"OK: {title}\n{out}\n\n"
+                "Next: stay in your current working session, refresh status, and only switch to Mango after the blockers are gone and the baseline files are present."
+            )
         else:
-            self.say(f"FAIL: {title} exited with code {code}.\n{out}")
+            self.say(
+                f"FAIL: {title} exited with code {code}.\n{out}\n\n"
+                "Do not switch to Mango. Return to the missing prerequisite or failing step, fix it from your current working session, then run this again."
+            )
         self.refresh_first_run()
 
     def dry_run_first_run_setup(self) -> None:
@@ -2310,6 +2472,10 @@ class MainWindow(QMainWindow):
             seen.setdefault(self.binding_key(line), []).append(line)
         return {k: v for k, v in seen.items() if len(v) > 1}
 
+    def has_binding_conflict(self, line: str) -> bool:
+        key = self.binding_key(line)
+        return any(self.binding_key(existing) == key for existing in self.binding_lines())
+
     def keybinding_display(self, line: str) -> str:
         kind, parts = self.parse_binding_line(line)
         if len(parts) < 3:
@@ -2330,21 +2496,62 @@ class MainWindow(QMainWindow):
     def refresh_keybindings(self) -> None:
         if not hasattr(self, "keybinds_list"):
             return
-        self.keybinds_list.clear()
         duplicates = self.duplicate_bindings()
         duplicate_keys = set(duplicates)
+        self._keybind_items = []
         for line in self.binding_lines():
             display = self.keybinding_display(line)
             if self.binding_key(line) in duplicate_keys:
                 display = "DUPLICATE  " + display
-            item = QListWidgetItem(display)
-            item.setData(Qt.ItemDataRole.UserRole, line)
-            self.keybinds_list.addItem(item)
+            self._keybind_items.append((line, display))
+        # Keep current sort mode or default to file order
+        active_sort = None
+        for btn in getattr(self, "keybind_sort_buttons", []):
+            if btn.isChecked():
+                active_sort = btn.property("sort_mode")
+                break
+        if active_sort:
+            self._apply_keybind_sort(active_sort)
+        self._filter_keybinds(getattr(self, "keybind_search", QLineEdit()).text())
         if duplicates:
-            text = "Duplicate shortcuts detected:\n" + "\n".join(f"- {k}: {len(v)} entries" for k, v in duplicates.items())
+            text = "Duplicate Mango shortcuts detected. Remove them before trusting this session:\n" + "\n".join(f"- {k}: {len(v)} entries" for k, v in duplicates.items())
         else:
-            text = "No duplicate Mango bind/axisbind shortcuts detected."
+            text = "No duplicate Mango bind/axisbind shortcuts detected. This page edits Mango compositor bindings only, not DMS shortcuts."
         self.keybind_duplicate_label.setText(text)
+
+    def _filter_keybinds(self, query: str) -> None:
+        """Rebuild the visible list from _keybind_items matching the search query."""
+        if not hasattr(self, "keybinds_list"):
+            return
+        self.keybinds_list.clear()
+        q = query.strip().lower()
+        for raw, display in self._keybind_items:
+            if q and q not in display.lower() and q not in raw.lower():
+                continue
+            item = QListWidgetItem(display)
+            item.setData(Qt.ItemDataRole.UserRole, raw)
+            self.keybinds_list.addItem(item)
+
+    def _sort_keybinds(self, mode: str) -> None:
+        """Toggle sort buttons and re-sort _keybind_items, then re-filter."""
+        for btn in getattr(self, "keybind_sort_buttons", []):
+            btn.setChecked(btn.property("sort_mode") == mode)
+        self._apply_keybind_sort(mode)
+        self._filter_keybinds(getattr(self, "keybind_search", QLineEdit()).text())
+
+    def _apply_keybind_sort(self, mode: str) -> None:
+        if mode == "alpha":
+            self._keybind_items.sort(key=lambda t: t[1].lower())
+        elif mode == "mod":
+            def mod_key(t: tuple[str, str]) -> str:
+                _, parts = self.parse_binding_line(t[0])
+                return parts[0].lower() if parts else ""
+            self._keybind_items.sort(key=mod_key)
+        elif mode == "action":
+            def action_key(t: tuple[str, str]) -> str:
+                _, parts = self.parse_binding_line(t[0])
+                return ",".join(parts[2:]).lower() if len(parts) > 2 else ""
+            self._keybind_items.sort(key=action_key)
 
     def selected_modifiers(self) -> str:
         mods = []
@@ -2395,12 +2602,9 @@ class MainWindow(QMainWindow):
         line = self.build_keybinding_line()
         if not line:
             return
-        key = self.binding_key(line)
-        conflicts = [existing for existing in self.binding_lines() if self.binding_key(existing) == key]
-        if conflicts:
-            msg = "This shortcut already exists:\n\n" + "\n".join(conflicts) + "\n\nAdd another binding anyway?"
-            if QMessageBox.question(self, "Duplicate shortcut", msg) != QMessageBox.StandardButton.Yes:
-                return
+        if self.has_binding_conflict(line):
+            self.say("FAIL: A Mango shortcut with the same modifiers+key already exists. Remove the old binding first so this app does not create conflicts.")
+            return
         self.cfg.ensure_line(line, "# DMS KDE Workstation Mango window controls")
         self.refresh_keybindings()
         self.say(f"Added shortcut: {line}")
@@ -2454,9 +2658,13 @@ class MainWindow(QMainWindow):
         if not line.startswith(("bind=", "axisbind=")):
             self.say("Binding must start with bind= or axisbind=")
             return
+        if self.has_binding_conflict(line):
+            self.say("FAIL: A Mango shortcut with the same modifiers+key already exists. Remove the old binding first so this app does not create conflicts.")
+            return
         self.cfg.ensure_line(line, "# DMS KDE Workstation Mango window controls")
         self.keybind_line.clear()
         self.refresh_keybindings()
+        self.say(f"Added raw shortcut: {line}")
 
     def remove_selected_keybinding(self) -> None:
         if not hasattr(self, "keybinds_list"):
@@ -3070,13 +3278,8 @@ class MainWindow(QMainWindow):
 
     def load_startup_config(self) -> dict:
         default = {
-            "tray_ready_services": [
-                "dropbox.service",
-                "app-dev.lizardbyte.app.Sunshine.service",
-            ],
-            "post_start_commands": [
-                "pgrep -f dms-workstation-service-indicator >/dev/null || /home/npittas/.local/bin/dms-workstation-service-indicator",
-            ],
+            "tray_ready_services": [],
+            "post_start_commands": [],
             "wait_timeout_seconds": 30,
         }
         if not STARTUP_JSON.exists():
@@ -3768,8 +3971,7 @@ class MainWindow(QMainWindow):
     def service_action(self, action: str, unit: str) -> None:
         if action == "status":
             self.detach(
-                [
-                    "ghostty",
+                self.get_terminal() + [
                     "-e",
                     "bash",
                     "-lc",
@@ -3846,15 +4048,41 @@ class MainWindow(QMainWindow):
 
         QTimer.singleShot(500, check)
 
+    def run_first_login_readiness(self) -> None:
+        if not FIRST_LOGIN_READINESS_SCRIPT.exists():
+            self.say(
+                "FAIL: First-login readiness script not found at "
+                + str(FIRST_LOGIN_READINESS_SCRIPT)
+                + "\nDo not switch to Mango. Fix the repo checkout first."
+            )
+            return
+        code, out = run_cmd([str(FIRST_LOGIN_READINESS_SCRIPT)], timeout=45)
+        if code == 0:
+            self.say(f"First Mango login readiness passed.\n{out}")
+        else:
+            self.say(
+                f"FAIL: First Mango login readiness check failed.\n{out}\n\n"
+                "Do not switch to Mango yet. Fix the FAIL items from your current working session, then run this check again."
+            )
+
     def run_health(self) -> None:
         if not HEALTH_SCRIPT.exists():
             self.say("FAIL: Health script not found at " + str(HEALTH_SCRIPT))
             return
+        if os.environ.get("XDG_CURRENT_DESKTOP", "").startswith("mango") is False:
+            self.say(
+                "INFO: Health Check is mainly for after a successful Mango login.\n"
+                "If you have not switched to Mango yet, use 'Check Ready for First Mango Login' instead.\n"
+            )
         code, out = run_cmd([str(HEALTH_SCRIPT)], timeout=45)
         if code == 0:
             self.say(f"Health check passed.\n{out}")
         else:
-            self.say(f"FAIL: Health check exited with code {code}.\n{out}\n\nRun manually: {HEALTH_SCRIPT}")
+            self.say(
+                f"FAIL: Health check exited with code {code}.\n{out}\n\n"
+                f"Run manually: {HEALTH_SCRIPT}\n"
+                "If Mango is unusable, return to a working session or TTY, re-run the baseline apply, and compare the reported missing files/services before trying Mango again."
+            )
 
     def open_text_file(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -3871,6 +4099,13 @@ class MainWindow(QMainWindow):
     def open_folder(self, path: str) -> None:
         """Open Dolphin with correct qt6ct theming."""
         self.detach(["env", "QT_QPA_PLATFORMTHEME=qt6ct", "QT_QPA_PLATFORMTHEME_QT6=qt6ct", "dolphin", "--new-window", path])
+
+    def get_terminal(self) -> list[str]:
+        """Return a terminal command prefix for the first available terminal emulator."""
+        for term in os.environ.get("TERMINAL", "").split(), ["ghostty"], ["kitty"], ["alacritty"], ["konsole"], ["gnome-terminal"], ["xfce4-terminal"]:
+            if term and shutil.which(term[0]):
+                return term
+        return ["xterm"]
 
     def detach(self, command: list[str]) -> None:
         try:

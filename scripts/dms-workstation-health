@@ -14,12 +14,17 @@ printf 'XDG_CURRENT_DESKTOP=%s\n' "${XDG_CURRENT_DESKTOP:-unset}"
 printf 'XDG_SESSION_DESKTOP=%s\n' "${XDG_SESSION_DESKTOP:-unset}"
 printf 'WAYLAND_DISPLAY=%s\n' "${WAYLAND_DISPLAY:-unset}"
 printf 'DISPLAY=%s\n' "${DISPLAY:-unset}"
+case "${XDG_CURRENT_DESKTOP:-}" in
+  mango*) ok "Health check is running inside Mango, which is the intended post-login context" ;;
+  *) warn "Health check is most useful after a successful Mango login. Before first login, use scripts/test-first-mango-readiness instead." ;;
+esac
 
 section "Core commands"
 for cmd in dms quickshell mango mmsg niri xwayland-satellite; do
   if has "$cmd"; then ok "$cmd present: $(command -v "$cmd")"; else warn "$cmd missing"; fi
 done
 if has mango; then mango -v 2>/dev/null || true; fi
+[ -f /usr/share/wayland-sessions/mango.desktop ] && ok "Mango session entry present" || warn "Mango session entry missing: /usr/share/wayland-sessions/mango.desktop"
 
 section "Compositor profile"
 case "${XDG_CURRENT_DESKTOP:-}" in
@@ -32,21 +37,25 @@ section "Mango baseline"
 MANGO_CONF="$HOME/.config/mango/config.conf"
 if [ -f "$MANGO_CONF" ]; then
   ok "Mango config exists: $MANGO_CONF"
-  file_has "$MANGO_CONF" 'exec-once=dms run' && ok "DMS direct startup configured" || warn "DMS direct startup missing"
+  file_has "$MANGO_CONF" 'exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run' && ok "DMS Mango startup configured with qt6ct env" || warn "DMS Mango startup line missing"
   STARTUP_JSON="$HOME/.config/dms-kde-workstation/startup.json"
   if [ -f "$STARTUP_JSON" ]; then
-    grep -q 'dropbox.service' "$STARTUP_JSON" && ok "Dropbox tray-ready startup configured" || warn "Dropbox tray-ready startup missing"
-    grep -q 'app-dev.lizardbyte.app.Sunshine.service' "$STARTUP_JSON" && ok "Sunshine tray-ready startup configured" || warn "Sunshine tray-ready startup missing"
+    ok "DMS Mango startup config exists: $STARTUP_JSON"
   else
     warn "DMS Mango startup config missing: $STARTUP_JSON"
   fi
-  file_has "$MANGO_CONF" 'vicinae.service' && ok "Vicinae autostart configured" || warn "Vicinae autostart missing"
   file_has "$MANGO_CONF" 'layout_name:scroller' && ok "Scroller default tag rules configured" || warn "Scroller default tag rules missing"
   file_has "$MANGO_CONF" 'axisbind=SUPER,DOWN,focusstack,next' && ok "Super+wheel next configured" || warn "Super+wheel next missing"
   file_has "$MANGO_CONF" 'axisbind=SUPER,UP,focusstack,prev' && ok "Super+wheel prev configured" || warn "Super+wheel prev missing"
   file_has "$MANGO_CONF" 'mango-workstation-menu' && ok "Mango Workstation Menu bind configured" || warn "Mango Workstation Menu bind missing"
   file_has "$MANGO_CONF" 'dms-mango-post-startup' && ok "Additive Mango post-startup helper configured" || warn "Mango post-startup helper missing"
-  file_has "$MANGO_CONF" 'import-environment WAYLAND_DISPLAY DISPLAY' && ok "Mango imports display environment into user services" || warn "Mango display environment import missing"
+  if systemctl --user is-enabled dms.service >/dev/null 2>&1; then
+    warn "dms.service still enabled; this can conflict with Mango's explicit dms run startup"
+  else
+    ok "dms.service not enabled for future sessions"
+  fi
+  bind_dupes="$(grep -E '^(bind|axisbind)=' "$MANGO_CONF" | cut -d= -f2- | cut -d, -f1-2 | tr '[:upper:]' '[:lower:]' | sort | uniq -d)"
+  [ -z "$bind_dupes" ] && ok "No duplicate Mango bind/axisbind keys detected" || warn "Duplicate Mango bind/axisbind keys detected"
 else
   fail "Mango config missing: $MANGO_CONF"
 fi
@@ -60,7 +69,7 @@ for svc in xdg-desktop-portal.service xdg-desktop-portal-kde.service xdg-desktop
 done
 
 section "Portal config candidates"
-for f in "$HOME/.config/xdg-desktop-portal/mango-portals.conf" "$HOME/.config/xdg-desktop-portal/niri-portals.conf" "$HOME/.config/xdg-desktop-portal/portals.conf" /usr/share/xdg-desktop-portal/mango-portals.conf; do
+for f in "$HOME/.config/systemd/user/xdg-desktop-portal.service" "$HOME/.config/xdg-desktop-portal/mango-portals.conf" "$HOME/.config/xdg-desktop-portal/niri-portals.conf" "$HOME/.config/xdg-desktop-portal/portals.conf" /usr/share/xdg-desktop-portal/mango-portals.conf; do
   if [ -f "$f" ]; then ok "$f exists"; else warn "$f missing"; fi
 done
 
@@ -84,40 +93,73 @@ section "Theme baseline"
 [ -f "$HOME/.config/gtk-4.0/settings.ini" ] && ok "GTK4 settings exist" || warn "GTK4 settings missing"
 
 section "Default apps"
-check_default() {
-  local mime="$1" expected="$2" actual
+show_default() {
+  local mime="$1" label="$2" actual
   actual="$(xdg-mime query default "$mime" 2>/dev/null || true)"
-  [ "$actual" = "$expected" ] && ok "$mime -> $expected" || warn "$mime -> ${actual:-unset}, expected $expected"
+  if [ -n "$actual" ]; then
+    ok "$label: $mime -> $actual"
+  else
+    warn "$label: $mime has no default app set"
+  fi
 }
-check_default inode/directory org.kde.dolphin.desktop
-check_default application/pdf okularApplication_pdf.desktop
-check_default image/png org.kde.gwenview.desktop
-check_default application/zip org.kde.ark.desktop
-check_default text/plain dev.zed.Zed.desktop
-check_default x-scheme-handler/http app.zen_browser.zen.desktop
+show_default inode/directory "Folders"
+show_default application/pdf "PDFs"
+show_default image/png "Images"
+show_default application/zip "Archives"
+show_default text/plain "Text/code"
+show_default x-scheme-handler/http "Browser"
 
 section "Flatpak app overrides"
 if has flatpak; then
-  flatpak info --show-permissions md.obsidian.Obsidian 2>/dev/null | grep -q 'OBSIDIAN_USE_WAYLAND=1' && ok "Obsidian Wayland override configured" || warn "Obsidian Wayland override missing"
+  if flatpak info md.obsidian.Obsidian >/dev/null 2>&1; then
+    flatpak info --show-permissions md.obsidian.Obsidian 2>/dev/null | grep -q 'OBSIDIAN_USE_WAYLAND=1' && ok "Obsidian Wayland override configured" || warn "Obsidian Wayland override missing (use the baseline --obsidian-override flag)"
+  else
+    ok "Obsidian Flatpak not installed; skipping Wayland override check"
+  fi
 else
-  warn "flatpak missing"
+  ok "flatpak not installed; skipping app override checks"
 fi
 
 section "Agents/services"
-for svc in dropbox.service app-dev.lizardbyte.app.Sunshine.service vicinae.service pipewire.service wireplumber.service; do
+for svc in pipewire.service wireplumber.service; do
   if systemctl --user is-active --quiet "$svc"; then ok "$svc active"; else warn "$svc not active"; fi
 done
-pgrep -af 'dms-workstation-service-indicator' >/dev/null && ok "Workstation service indicator running" || warn "Workstation service indicator not running"
 [ -x "$HOME/.local/bin/dms-mango-post-startup" ] && ok "dms-mango-post-startup installed" || warn "dms-mango-post-startup missing"
 [ -f "$HOME/.config/dms-kde-workstation/startup.json" ] && ok "DMS Mango startup config exists" || warn "DMS Mango startup config missing"
 pgrep -x xembedsniproxy >/dev/null && ok "xembedsniproxy running" || warn "xembedsniproxy not running; XEmbed tray icons may be missing"
 pgrep -af 'gnome-keyring|kwallet|ksecretd' >/dev/null && ok "keyring/wallet appears running" || warn "keyring/wallet not detected"
 
+section "Configured tray-ready services"
+if [ -f "$HOME/.config/dms-kde-workstation/startup.json" ]; then
+  configured_services="$(python3 -c 'import json, pathlib; p=pathlib.Path.home()/".config/dms-kde-workstation/startup.json"; data=json.loads(p.read_text()); [print(x) for x in data.get("tray_ready_services", []) if isinstance(x, str)]' 2>/dev/null || true)"
+  if [ -n "$configured_services" ]; then
+    while IFS= read -r svc; do
+      [ -n "$svc" ] || continue
+      if systemctl --user is-active --quiet "$svc"; then ok "$svc active"; else warn "$svc not active"; fi
+    done <<EOF
+$configured_services
+EOF
+  else
+    ok "No tray-ready services configured in startup.json"
+  fi
+else
+  warn "startup.json missing; cannot inspect configured tray-ready services"
+fi
+
 section "Tray/status indicators"
 if command -v dbus-send >/dev/null 2>&1; then
   tray_items="$(dbus-send --session --print-reply --dest=org.kde.StatusNotifierWatcher /StatusNotifierWatcher org.freedesktop.DBus.Properties.Get string:org.kde.StatusNotifierWatcher string:RegisteredStatusNotifierItems 2>/dev/null || true)"
-  echo "$tray_items" | grep -qi 'dropbox' && ok "Dropbox real StatusNotifier item registered" || warn "Dropbox StatusNotifier item not detected"
-  echo "$tray_items" | grep -Eqi 'sunshine|trayid' && ok "Sunshine/host tray StatusNotifier item registered" || warn "Sunshine StatusNotifier item not detected"
+  if [ -n "$configured_services" ]; then
+    while IFS= read -r svc; do
+      [ -n "$svc" ] || continue
+      label="$(basename "$svc" .service | tr '[:upper:]' '[:lower:]')"
+      echo "$tray_items" | tr '[:upper:]' '[:lower:]' | grep -qi "$label" && ok "$svc tray item detected" || warn "$svc tray item not detected"
+    done <<EOF
+$configured_services
+EOF
+  else
+    ok "No configured tray-ready services to inspect for tray registration"
+  fi
 else
   warn "dbus-send missing; cannot inspect StatusNotifierWatcher"
 fi
@@ -146,7 +188,6 @@ fi
 
 section "Known workstation blockers"
 ok "Mango DnD into Blender/Nuke: user-confirmed working"
-ok "DMS service visibility under Mango: prototype Workstation Services tray indicator user-confirmed visible"
 ok "DMS Mango Settings companion GUI installed; native DMS integration still future work"
 
 section "Done"

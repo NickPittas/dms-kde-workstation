@@ -32,7 +32,7 @@ The installer path is now **automation-first**.
 - current `dms-mango-settings` app
 - settings app desktop file
 - settings app autostart entry
-- DMS Dolphin launch override for qt6ct theming from the DMS dock
+- optional targeted workarounds can still be applied later if a specific launch path misbehaves on your machine
 
 It also uses direct file writes via `tee`, not `cp`, for deployed files.
 
@@ -219,16 +219,16 @@ exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run
 
 This is required because otherwise DMS-launched KDE/Qt apps can inherit `gtk3` and appear white.
 
-### Dolphin from the DMS dock needs a DMS app override
+### Dolphin from the DMS dock may need a targeted DMS app override
 
-The DMS dock can launch apps through its own launcher pipeline. For Dolphin, that path must carry:
+The DMS dock can launch apps through its own launcher pipeline. On one machine, Dolphin needed:
 
 ```text
 QT_QPA_PLATFORMTHEME=qt6ct
 QT_QPA_PLATFORMTHEME_QT6=qt6ct
 ```
 
-The baseline installer now applies a Dolphin-specific DMS `appOverrides` entry in `~/.config/DankMaterialShell/settings.json` so Dolphin launched from the DMS dock keeps the correct dark theme.
+That is now treated as a targeted workaround, not a universal baseline action. The baseline installer does **not** auto-apply that override anymore.
 
 ### Post-startup helper owns startup app launch timing
 
@@ -275,18 +275,22 @@ scripts/dms-workstation-health
 
 ## Short version
 
-If DMS is already installed, the real install is basically:
+Safe order:
+
+1. stay in your current working KDE/niri session
+2. install DMS
+3. install Mango
+4. run:
 
 ```bash
 cd ~/dms-kde-workstation
 scripts/apply-mango-baseline --apply --install-packages
+scripts/test-first-mango-readiness
 ```
 
-Then:
-
-1. log into Mango
-2. run DMS Theme/Colors export once
-3. reboot once
-4. verify
+5. only if readiness says `READY`, log into Mango
+6. run DMS Theme/Colors export once
+7. reboot once
+8. verify
 
 That is now the intended install path.

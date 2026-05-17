@@ -126,13 +126,6 @@ if echo "$ITEMS" | grep -qi "rustdesk" 2>/dev/null; then
   track_ok "RustDesk tray icon registered (accepted weird env)"
 fi
 
-# Workstation indicator
-if echo "$ITEMS" | grep -qi "Workstation" 2>/dev/null || echo "$ITEMS" | grep -qi "tray_app" 2>/dev/null; then
-  track_ok "Workstation Services indicator registered"
-else
-  track_warn "Workstation Services indicator not detected"
-fi
-
 # ---- Portals ----
 section "Portals"
 
@@ -162,20 +155,20 @@ fi
 # ---- Default apps ----
 section "Default apps"
 
-check_mime() {
-  local mime="$1" expected="$2" label="$3"
+show_mime() {
+  local mime="$1" label="$2"
   actual="$(xdg-mime query default "$mime" 2>/dev/null || echo unset)"
-  if [ "$actual" = "$expected" ]; then
+  if [ "$actual" != "unset" ]; then
     track_ok "$label: $actual"
   else
-    track_warn "$label: $actual (expected $expected)"
+    track_warn "$label: unset"
   fi
 }
 
-check_mime "inode/directory" "org.kde.dolphin.desktop" "Folders"
-check_mime "application/pdf" "okularApplication_pdf.desktop" "PDFs"
-check_mime "text/plain" "dev.zed.Zed.desktop" "Text/code"
-check_mime "x-scheme-handler/https" "app.zen_browser.zen.desktop" "Browser"
+show_mime "inode/directory" "Folders"
+show_mime "application/pdf" "PDFs"
+show_mime "text/plain" "Text/code"
+show_mime "x-scheme-handler/https" "Browser"
 
 # ---- Full health check ----
 section "Full health check"

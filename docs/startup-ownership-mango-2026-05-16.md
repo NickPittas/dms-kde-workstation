@@ -78,13 +78,16 @@ System tray is not initialized
 Mango config should do:
 
 ```text
-exec-once=systemctl --user import-environment ...
-exec-once=dbus-update-activation-environment --systemd ...
-exec-once=dms run
+exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run
 exec-once=systemctl --user start vicinae.service
-exec-once=systemctl --user start xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service
+exec-once=systemctl --user start xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service plasma-xdg-desktop-portal-kde.service
 exec-once=/home/npittas/.local/bin/dms-mango-post-startup
 ```
+
+Notes:
+
+- newer Mango guidance warns against keeping redundant `dbus-update-activation-environment` startup lines when Mango already handles runtime session propagation for portals
+- `dms.service` must **not** also be enabled for Mango if this `dms run` exec-once path is present
 
 `dms-mango-post-startup` does **not** start DMS. It only waits for DMS/StatusNotifierWatcher and fills Mango-specific gaps.
 
@@ -96,7 +99,7 @@ exec-once=/home/npittas/.local/bin/dms-mango-post-startup
 2. wait for `org.kde.StatusNotifierWatcher`,
 3. start `xembedsniproxy` if missing,
 4. restart configured tray-sensitive user services,
-5. start optional helper processes like Workstation Services indicator,
+5. start optional helper processes when explicitly configured by the user,
 6. log verification output.
 
 ## Config file
@@ -117,13 +120,9 @@ Initial baseline:
 
 ```json
 {
-  "tray_ready_services": [
-    "dropbox.service",
-    "app-dev.lizardbyte.app.Sunshine.service"
-  ],
-  "post_start_commands": [
-    "/home/npittas/.local/bin/dms-workstation-service-indicator"
-  ]
+  "tray_ready_services": [],
+  "post_start_commands": [],
+  "wait_timeout_seconds": 30
 }
 ```
 

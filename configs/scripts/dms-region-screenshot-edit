@@ -4,9 +4,10 @@ if ! command -v grim >/dev/null || ! command -v slurp >/dev/null || ! command -v
   notify-send "Screenshot tools missing" "Need grim, slurp and swappy" 2>/dev/null || true
   exit 1
 fi
+save_dir="$HOME/Pictures/Screenshots"
+mkdir -p "$save_dir"
 geometry="$(slurp -b '#00000000' -s '#00000000' -c '#cba6f7ff' -w 2)" || exit 0
 [ -n "$geometry" ] || exit 0
-tmp="$(mktemp --suffix=.png /tmp/dms-region-screenshot-XXXXXX)"
-trap 'rm -f "$tmp"' EXIT
-grim -g "$geometry" "$tmp"
-env GTK_THEME=catppuccin-macchiato-blue-standard+default swappy -f "$tmp"
+outfile="$save_dir/Screenshot-$(date +%Y%m%d-%H%M%S)-region.png"
+grim -g "$geometry" "$outfile"
+env GTK_THEME=catppuccin-macchiato-blue-standard+default swappy -f "$outfile"

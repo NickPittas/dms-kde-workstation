@@ -13,23 +13,18 @@ Now the goal is to make Mango usable enough to replace niri for the DMS KDE Work
 
 ## Autostart parity
 
-Added Mango startup entries for the services we relied on in niri/KDE:
+Historical note: this file originally captured a machine-local startup experiment.
+
+The safer current model is:
 
 ```text
-exec-once=dms run
-exec-once=systemctl --user start dropbox.service
-exec-once=systemctl --user start app-dev.lizardbyte.app.Sunshine.service
+exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run
 exec-once=systemctl --user start vicinae.service
-exec-once=systemctl --user start xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service
+exec-once=systemctl --user start xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service plasma-xdg-desktop-portal-kde.service
+exec-once=/home/npittas/.local/bin/dms-mango-post-startup
 ```
 
-Confirmed running in current session:
-
-- Dropbox
-- Sunshine
-- Vicinae
-- xdg-desktop-portal-wlr
-- xdg-desktop-portal-gtk
+Do not treat direct Dropbox/Sunshine exec-once startup as the baseline model. Tray-sensitive services should be handled by the post-startup helper after DMS tray infrastructure is ready.
 
 ## Mango Workstation Menu
 

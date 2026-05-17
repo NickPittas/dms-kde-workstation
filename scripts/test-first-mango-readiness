@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+set -u
+
+pass() { printf 'OK   %s\n' "$*"; }
+warn() { printf 'WARN %s\n' "$*"; }
+fail() { printf 'FAIL %s\n' "$*"; }
+has() { command -v "$1" >/dev/null 2>&1; }
+file_has() { [ -f "$1" ] && grep -q -- "$2" "$1"; }
+
+ready=1
+
+printf '== First Mango Login Readiness ==\n'
+printf 'Run this from your current working KDE/niri session before logging into Mango.\n\n'
+
+case "${XDG_CURRENT_DESKTOP:-}" in
+  mango*)
+    warn "You appear to already be inside a Mango session. This script is meant for pre-switch checking from a currently working non-Mango session."
+    ;;
+esac
+
+if has mango; then pass "mango installed"; else fail "mango missing"; ready=0; fi
+if [ -f /usr/share/wayland-sessions/mango.desktop ]; then
+  pass "mango session entry present"
+else
+  fail "mango session entry missing: /usr/share/wayland-sessions/mango.desktop"
+  ready=0
+fi
+if has dms; then pass "dms installed"; else fail "dms missing"; ready=0; fi
+if has qs || has quickshell; then pass "quickshell available"; else fail "quickshell missing"; ready=0; fi
+
+for pkg in xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk xdg-desktop-portal-kde; do
+  if rpm -q "$pkg" >/dev/null 2>&1; then
+    pass "$pkg installed"
+  else
+    fail "$pkg missing"
+    ready=0
+  fi
+done
+
+MANGO_CONF="$HOME/.config/mango/config.conf"
+PORTAL_UNIT="$HOME/.config/systemd/user/xdg-desktop-portal.service"
+PORTAL_CONF="$HOME/.config/xdg-desktop-portal/mango-portals.conf"
+SETTINGS_BIN="$HOME/.local/bin/dms-mango-settings"
+POST_HELPER="$HOME/.local/bin/dms-mango-post-startup"
+ENV_FILE="$HOME/.config/environment.d/90-dms-kde-qt.conf"
+
+[ -f "$MANGO_CONF" ] && pass "Mango config present" || { fail "Mango config missing: $MANGO_CONF"; ready=0; }
+file_has "$MANGO_CONF" 'exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run' && pass "DMS Mango startup line present" || { fail "DMS Mango startup line missing"; ready=0; }
+if systemctl --user is-enabled dms.service >/dev/null 2>&1; then
+  fail "dms.service is still enabled; disable it to avoid double-start conflict with Mango exec-once"
+  ready=0
+else
+  pass "dms.service not enabled for future sessions"
+fi
+[ -f "$PORTAL_UNIT" ] && pass "Portal user override present" || { fail "Portal user override missing: $PORTAL_UNIT"; ready=0; }
+[ -f "$PORTAL_CONF" ] && pass "Portal config present" || { fail "Portal config missing: $PORTAL_CONF"; ready=0; }
+[ -x "$SETTINGS_BIN" ] && pass "Settings app installed" || { fail "Settings app missing: $SETTINGS_BIN"; ready=0; }
+[ -x "$POST_HELPER" ] && pass "Post-startup helper installed" || { fail "Post-startup helper missing: $POST_HELPER"; ready=0; }
+[ -f "$ENV_FILE" ] && pass "Toolkit environment file present" || warn "Toolkit environment file missing: $ENV_FILE"
+
+if [ "$ready" -eq 1 ]; then
+  printf '\nREADY: Safe to log out, choose the Mango session, and attempt first login.\n'
+  printf 'After first Mango login: export DMS Theme/Colors once, reboot once, then run scripts/dms-workstation-health.\n'
+  exit 0
+fi
+
+printf '\nNOT READY: Do not switch to Mango yet. Fix the FAIL items from your current working session and run this again.\n'
+printf 'Common fix: if dms.service is enabled, run: systemctl --user disable dms.service\n'
+exit 1

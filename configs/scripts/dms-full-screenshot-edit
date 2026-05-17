@@ -4,7 +4,8 @@ if ! command -v grim >/dev/null || ! command -v swappy >/dev/null; then
   notify-send "Screenshot tools missing" "Need grim and swappy" 2>/dev/null || true
   exit 1
 fi
-tmp="$(mktemp --suffix=.png /tmp/dms-full-screenshot-XXXXXX)"
-trap 'rm -f "$tmp"' EXIT
-grim "$tmp"
-env GTK_THEME=catppuccin-macchiato-blue-standard+default swappy -f "$tmp"
+save_dir="$HOME/Pictures/Screenshots"
+mkdir -p "$save_dir"
+outfile="$save_dir/Screenshot-$(date +%Y%m%d-%H%M%S)-full.png"
+grim "$outfile"
+env GTK_THEME=catppuccin-macchiato-blue-standard+default swappy -f "$outfile"

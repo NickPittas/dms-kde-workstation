@@ -29,6 +29,10 @@ EOF
 }
 
 log() { printf '%s\n' "$*"; }
+fail() {
+  printf 'ERROR: %s\n' "$*" >&2
+  exit 1
+}
 run() {
   if [ "$APPLY" -eq 1 ]; then
     log "+ $*"
@@ -63,7 +67,8 @@ install_file() {
   backup_file "$target"
   if [ "$APPLY" -eq 1 ]; then
     mkdir -p "$(dirname "$target")"
-    tee "$target" >/dev/null < "$src"
+    # Expand %H placeholder to the installing user's $HOME
+    sed "s|%H|$HOME|g" "$src" | tee "$target" >/dev/null
     chmod "$mode" "$target"
     log "Installed $target"
   else
@@ -80,8 +85,27 @@ install_packages() {
     fuzzel wl-clipboard grim slurp swappy wf-recorder
   )
 
-  run sudo dnf install -y --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' mangowm
+  run sudo dnf install -y --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release
+  run sudo dnf install -y mangowm
   run sudo dnf install -y "${fedora_packages[@]}"
+}
+
+check_prerequisites() {
+  log "Preflight checks:"
+  log "  - run this from your current working KDE/niri session"
+  log "  - do NOT switch to Mango until this script completes successfully"
+
+  if ! command -v dms >/dev/null 2>&1; then
+    fail "DMS is not installed. Install it first, then re-run this script. Fedora example: sudo dnf copr enable avengemedia/dms && sudo dnf install dms"
+  fi
+
+  if ! command -v qs >/dev/null 2>&1 && ! command -v quickshell >/dev/null 2>&1; then
+    fail "Quickshell is not available (missing 'qs'/'quickshell'). Fix your DMS install first, then re-run this script."
+  fi
+
+  if [ "$INSTALL_PACKAGES" -eq 0 ] && ! command -v mango >/dev/null 2>&1; then
+    fail "Mango is not installed. Install Mango first or re-run with --install-packages. Do not log into Mango yet."
+  fi
 }
 
 install_polkit_policy() {
@@ -122,9 +146,6 @@ apply_files() {
   install_file "$ROOT/configs/xdg-desktop-portal/mango-portals.conf.working-20260516" \
     "$HOME/.config/xdg-desktop-portal/mango-portals.conf" 0644
 
-  install_file "$ROOT/configs/mime/mimeapps.list.working-20260516" \
-    "$HOME/.config/mimeapps.list" 0644
-
   install_file "$ROOT/configs/environment.d/90-dms-kde-qt.conf" \
     "$HOME/.config/environment.d/90-dms-kde-qt.conf" 0644
 
@@ -136,16 +157,14 @@ apply_files() {
     "$HOME/.local/bin/dms-region-screenshot-copy" 0755
   install_file "$ROOT/configs/scripts/mango-workstation-menu" \
     "$HOME/.local/bin/mango-workstation-menu" 0755
-  install_file "$ROOT/configs/scripts/dms-workstation-service-indicator" \
-    "$HOME/.local/bin/dms-workstation-service-indicator" 0755
 
   install_file "$ROOT/tools/dms-mango-settings.py" \
     "$HOME/.local/bin/dms-mango-settings" 0755
 
   install_file "$ROOT/scripts/dms-mango-post-startup" \
     "$HOME/.local/bin/dms-mango-post-startup" 0755
-  install_file "$ROOT/scripts/apply-dms-launch-overrides" \
-    "$HOME/.local/bin/apply-dms-launch-overrides" 0755
+  install_file "$ROOT/scripts/test-first-mango-readiness" \
+    "$HOME/.local/bin/test-first-mango-readiness" 0755
 
   install_file "$ROOT/configs/lib/sddm-consolidate-autologin.py" \
     "$HOME/.local/lib/dms-kde-workstation/sddm-consolidate-autologin.py" 0755
@@ -178,7 +197,7 @@ apply_user_actions() {
     done
   fi
 
-  run "$HOME/.local/bin/apply-dms-launch-overrides"
+  log "Skipping automatic DMS appOverrides injection. Keep launcher-specific overrides optional until they are generalized safely."
 
   if [ "$APPLY_OBSIDIAN_OVERRIDE" -eq 1 ]; then
     if command -v flatpak >/dev/null 2>&1 && flatpak info md.obsidian.Obsidian >/dev/null 2>&1; then
@@ -208,6 +227,8 @@ else
   log "Mode: DRY-RUN"
 fi
 
+check_prerequisites
+
 if [ "$INSTALL_PACKAGES" -eq 1 ]; then
   install_packages
 else
@@ -221,17 +242,22 @@ apply_user_actions
 cat <<EOF
 
 Next verification steps:
-  $ROOT/scripts/dms-workstation-health
+  1. Stay in your current working session until the checks below are understood.
+  2. Run: $ROOT/scripts/test-first-mango-readiness
+  3. Only if that script says READY, log out.
+  4. Choose the Mango session in SDDM.
+  5. Log into Mango.
+  6. Open DMS -> Settings -> Theme/Colors and export GTK3/GTK4/QT5/QT6 once.
+  7. Reboot once.
+  8. Run: $ROOT/scripts/dms-workstation-health
 
-Manual checks:
-  - log into Mango if not already there
-  - confirm DMS bar and Workstation Services indicator are visible
+Manual checks in the Mango session:
+  - confirm DMS bar appears
   - confirm DMS Mango Settings autostarts and shows one tray icon only
   - confirm Alt+Shift toggles US/Greek
-  - confirm Dolphin -> Nuke and Dolphin -> Blender DnD
-  - confirm screenshot shortcuts open Swappy/copy image
-  - open DMS Theme/Colors and re-export GTK3/4 + QT5/6 once after qt5ct/qt6ct-kde are installed
-  - add startup apps from the Settings app Startup page and verify they appear after next login
+  - confirm screenshot shortcuts work
+  - confirm portals/file chooser work
+  - confirm startup apps appear after next login
 EOF
 
 if [ "$APPLY" -eq 0 ]; then

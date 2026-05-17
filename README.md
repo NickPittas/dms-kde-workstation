@@ -35,69 +35,68 @@ It is trying to be a practical, reproducible workstation profile.
 
 ---
 
-## Main install path
+## Safe install path for a new machine
 
-If **DMS is already installed**, the main path is:
+**Do not switch to the Mango session yet.**
 
-```bash
-git clone git@github.com:NickPittas/dms-kde-workstation.git
-cd dms-kde-workstation
-scripts/apply-mango-baseline --apply --install-packages
-```
+Run the setup from your current working desktop first (KDE, niri, or another session that already works).
 
-Then:
+If you switch to Mango too early, you can land in an empty session with no DMS shell, missing keybinds, and poor recovery options.
 
-1. log into the **Mango** session
-2. open **DMS → Settings → Theme/Colors**
-3. export **GTK3 / GTK4 / QT5 / QT6** once
-4. reboot once
-5. run:
+### 1) Install DMS first
+
+Official Fedora DMS install path:
 
 ```bash
-scripts/dms-workstation-health
+sudo dnf copr enable avengemedia/dms
+sudo dnf install dms
 ```
 
----
-
-## Fresh clone: what to do
-
-### Before
-
-Make sure you have:
-
-- Fedora 44
-- KDE Plasma installed
-- a normal user with sudo
-- DMS installed already
-
-Verify DMS:
+Verify:
 
 ```bash
 command -v dms
-command -v quickshell
+command -v qs
 ```
 
-If those are missing, install DMS first using your normal DMS install method.
+If `dms` or `qs` is missing, stop here and fix DMS first.
 
-### Clone
+### 2) Install Mango
+
+Official Fedora Mango install path:
+
+```bash
+sudo dnf install --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release
+sudo dnf install mangowm
+```
+
+Do **not** log into Mango yet.
+
+### 3) Clone this repo
 
 ```bash
 git clone git@github.com:NickPittas/dms-kde-workstation.git
 cd dms-kde-workstation
 ```
 
-### Preview what will happen
+### 4) Preview the baseline changes
 
 ```bash
 scripts/apply-mango-baseline --install-packages
 ```
 
-This is dry-run by default.
+Dry-run is the default.
 
-### Apply it for real
+### 5) Apply the baseline for real
 
 ```bash
 scripts/apply-mango-baseline --apply --install-packages
+```
+
+If you previously enabled `dms.service`, disable it before first Mango login so Mango's explicit `dms run` startup line is the only DMS startup path:
+
+```bash
+systemctl --user disable dms.service
 ```
 
 Optional Obsidian Wayland/DnD fix:
@@ -106,42 +105,87 @@ Optional Obsidian Wayland/DnD fix:
 scripts/apply-mango-baseline --apply --install-packages --obsidian-override
 ```
 
-### After
+### 6) Verify before session switch
 
-- choose the **Mango** session in SDDM
-- log in
-- run the one-time DMS theme export
-- reboot once
-- run the health check
+Before you log out, run:
+
+```bash
+scripts/test-first-mango-readiness
+```
+
+Only continue if it ends with:
+
+```text
+READY: Safe to log out, choose the Mango session, and attempt first login.
+```
+
+If it says `NOT READY`, do **not** switch to Mango yet.
+
+It also verifies that the Mango session entry exists at:
+
+```text
+/usr/share/wayland-sessions/mango.desktop
+```
+
+One common blocker is leaving `dms.service` enabled while Mango also starts `dms run`. Disable it from your current working session:
+
+```bash
+systemctl --user disable dms.service
+```
+
+### 7) First Mango login
+
+Only now:
+
+1. log out
+2. choose the **Mango** session in SDDM
+3. log into Mango
+4. open **DMS → Settings → Theme/Colors**
+5. export **GTK3 / GTK4 / QT5 / QT6** once
+6. reboot once
+7. run:
+
+```bash
+scripts/dms-workstation-health
+```
 
 ---
 
 ## First Run Setup in the app
 
-The settings app now includes a **First Run Setup** page.
+The settings app includes a **First Run Setup** page for this exact migration flow.
 
-Goal:
+Use it like this:
 
-1. install Mango
-2. install DMS
-3. clone this repo
-4. run **DMS Mango Settings**
-5. open **First Run Setup**
-6. click **Apply Setup**
+1. stay in your current working KDE/niri session
+2. install Mango
+3. install DMS
+4. clone this repo
+5. run **DMS Mango Settings**
+6. open **First Run Setup**
+7. click **Refresh Status**
+8. fix every blocker shown there
+9. click **Apply Full Baseline**
+10. click **Check Ready for First Mango Login**
+11. only then log out and choose Mango
 
-That page checks and applies the user-level workstation baseline automatically.
+That page is supposed to be the safe gate before first Mango login.
+It now also checks DMS startup ownership so you do not accidentally run both `dms.service` and Mango's `dms run` startup path at the same time.
 
-### It handles things like
+### It handles
 
 - Mango config deployment
 - DMS startup line under Mango
-- explicit `qt6ct` launch environment for DMS
-- portal override + portal config
+- stable Qt/Electron toolkit environment
+- portal package checks
+- portal override + portal config deployment
 - screenshot toolchain install
 - settings app install/autostart
 - post-startup helper install
 - startup app support after the UI appears
-- DMS Dolphin launch override for proper dock launches
+- autologin helper deployment checks
+
+It does **not** force personal MIME/default-app choices like browser/editor/file manager during baseline install. Use the app's **Default Apps** page for that.
 
 ### Still manual
 
@@ -149,8 +193,18 @@ These are still intentionally manual:
 
 - installing Mango itself
 - installing DMS itself
-- one-time DMS Theme/Colors export
+- one-time DMS Theme/Colors export after first working Mango login
 - optional SDDM autologin setup
+
+### Recovery if you switched too early
+
+If you already logged into Mango and got a broken or empty session:
+
+1. return to a working TTY or another desktop session
+2. clone/fix the repo from there
+3. re-run `scripts/apply-mango-baseline --apply --install-packages`
+4. confirm the `dms run` exec-once line exists in `~/.config/mango/config.conf`
+5. log back into Mango only after the baseline is in place
 
 ---
 
@@ -222,6 +276,8 @@ The app currently covers:
 
 ![Services](assets/screenshots/services.png)
 
+The Services page now reflects services that actually exist on the current machine instead of assuming every user has the same remote-desktop, sync, or tray tools installed.
+
 #### Portals
 
 ![Portals](assets/screenshots/portals.png)
@@ -264,16 +320,24 @@ Dolphin launched from:
 
 - **Meta+E** worked
 - **Vicinae** worked
-- **DMS dock** needed a DMS app override
+- **DMS dock** needed extra care on one machine
 
-So the baseline now applies a DMS `appOverrides` entry for Dolphin with:
+That behavior is **not** currently treated as a safe universal baseline fix.
+
+If Dolphin launched specifically from the DMS dock still looks wrong on your machine, compare it against:
+
+- Dolphin launched from a normal compositor bind
+- Dolphin launched from Vicinae
+- Dolphin launched from the DMS dock
+
+If the problem is only the DMS dock path, a DMS `appOverrides` entry with:
 
 ```text
 QT_QPA_PLATFORMTHEME=qt6ct
 QT_QPA_PLATFORMTHEME_QT6=qt6ct
 ```
 
-This prevents the checkerboard / wrong-row-color issue when Dolphin is launched from the DMS dock.
+may help, but it should be treated as a targeted workaround, not a default assumption for all users.
 
 ### DMS under Mango
 
@@ -285,6 +349,8 @@ exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run
 
 Without that, DMS-launched Qt/KDE apps can come up white or incorrectly themed.
 
+The shipped Mango baseline now keeps compositor binds generic. It does not assume your browser, terminal, editor, or file manager launch shortcuts.
+
 ---
 
 ## Scripts you will actually use
@@ -295,7 +361,13 @@ Without that, DMS-launched Qt/KDE apps can come up white or incorrectly themed.
 scripts/apply-mango-baseline --apply --install-packages
 ```
 
-### Health check
+### Pre-switch readiness check
+
+```bash
+scripts/test-first-mango-readiness
+```
+
+### Health check (after first Mango login)
 
 ```bash
 scripts/dms-workstation-health
@@ -319,6 +391,20 @@ scripts/test-mango-settings-smoke
 scripts/test-reboot-verification
 ```
 
+### Fresh-machine validation docs
+
+Checklist:
+
+```text
+docs/fresh-machine-validation-checklist.md
+```
+
+Results template:
+
+```text
+docs/fresh-machine-validation-results-template.md
+```
+
 ---
 
 ## Troubleshooting
@@ -338,14 +424,20 @@ Then log out/in or restart DMS.
 
 This is specifically the DMS dock launch path.
 
-The fix is a DMS app override for Dolphin with:
+Try the global baseline first:
+
+- confirm `qt5ct` and `qt6ct-kde` are installed
+- confirm DMS is started under Mango with the explicit `qt6ct` env line
+- export DMS Theme/Colors once after first working Mango login
+
+If the problem still happens only from the DMS dock, a DMS app override for Dolphin with:
 
 ```text
 QT_QPA_PLATFORMTHEME=qt6ct
 QT_QPA_PLATFORMTHEME_QT6=qt6ct
 ```
 
-This repo now applies that automatically in the baseline.
+may help as a targeted workaround. This repo no longer auto-applies that override during baseline setup.
 
 ### Tray icons are missing after login
 
@@ -354,8 +446,15 @@ Check:
 - `~/.local/bin/dms-mango-post-startup`
 - `~/.config/dms-kde-workstation/startup.json`
 - `~/.local/state/dms-kde-workstation/mango-post-startup.log`
+- `~/.config/systemd/user/xdg-desktop-portal.service`
+- `~/.config/xdg-desktop-portal/mango-portals.conf`
 
 The post-startup helper is responsible for delayed startup when DMS tray is ready.
+If the session is still incomplete, return to a working session or TTY and re-run:
+
+```bash
+scripts/apply-mango-baseline --apply --install-packages
+```
 
 ### Startup apps do not appear on login
 
@@ -363,6 +462,8 @@ This project intentionally does **not** rely on plain KDE assumptions.
 
 Startup apps are launched by the post-startup helper after the UI is ready.
 Use the app’s **Startup** page.
+
+The shipped `startup.json` baseline is intentionally neutral. It does not assume Dropbox, Sunshine, or other personal services are installed. Add tray-sensitive services only if you actually use them.
 
 ### Ghostty transparency/blur under Mango behaves differently than under niri
 

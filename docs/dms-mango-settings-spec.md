@@ -49,7 +49,7 @@ Show the current profile state:
 - Portal status
 - Active layout
 - Keyboard layout
-- Important services: Dropbox, Sunshine, RustDesk, Vicinae, portals
+- Important services: user-relevant services such as portals, Vicinae, RustDesk, Sunshine, Dropbox, etc. when installed
 - DnD baseline status: Blender/Nuke marked as user-confirmed working
 - Health check button
 

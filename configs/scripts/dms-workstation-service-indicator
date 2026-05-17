@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""Historical prototype.
+
+This synthetic tray indicator is not part of the automatic baseline anymore.
+Keep it only as a reference/example for optional future service-visibility UI.
+"""
 import os
 import subprocess
 import sys

@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""Historical/manual helper.
+
+Not part of the automatic baseline anymore.
+Use only as a targeted workaround when a specific DMS launcher path still needs
+an app override on a specific machine.
+"""
 from __future__ import annotations
 
 import json

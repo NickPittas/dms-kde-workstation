@@ -81,17 +81,16 @@ overviewgappo=30
 
 
 # DMS KDE Workstation Mango evaluation startup/environment
-exec-once=systemctl --user import-environment WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE DBUS_SESSION_BUS_ADDRESS XDG_DATA_DIRS QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_QPA_PLATFORMTHEME_QT6 ELECTRON_OZONE_PLATFORM_HINT
-exec-once=dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE DBUS_SESSION_BUS_ADDRESS XDG_DATA_DIRS QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME QT_QPA_PLATFORMTHEME_QT6 ELECTRON_OZONE_PLATFORM_HINT
+# Mango runtime is responsible for dynamic session variables.
+# Keep DMS startup explicit, but avoid redundant portal/dbus environment export lines.
 exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run
 
 # DMS KDE Workstation Mango additive startup gaps
 # DMS owns the shell/tray host. This helper waits for DMS StatusNotifierWatcher,
 # then starts Mango-only tray compatibility and user-configured tray-ready services.
-exec-once=/home/npittas/.local/bin/dms-mango-post-startup
+exec-once=%H/.local/bin/dms-mango-post-startup
 
-# DMS KDE Workstation autostart parity with niri/KDE
-exec-once=systemctl --user start vicinae.service
+# DMS KDE Workstation autostart parity
 exec-once=systemctl --user start xdg-desktop-portal-wlr.service xdg-desktop-portal-gtk.service plasma-xdg-desktop-portal-kde.service
 # Misc
 no_border_when_single=1
@@ -172,9 +171,9 @@ tagrule=id:9,layout_name:scroller
 # reload config
 bind=SUPER,r,reload_config
 
-# menu and terminal
-bind=Alt,space,spawn,vicinae toggle
-bind=Alt,Return,spawn,ghostty
+# launcher
+# Keep baseline launcher behavior generic. Do not assume a specific terminal.
+bind=Alt,space,spawn,fuzzel
 
 # exit
 bind=SUPER+SHIFT,m,quit
@@ -287,24 +286,20 @@ mousebind=SUPER,btn_right,moveresize,curresize
 layerrule=animation_type_open:zoom,layer_name:rofi
 layerrule=animation_type_close:zoom,layer_name:rofi
 
-# DMS KDE Workstation app binds
-bind=SUPER,e,spawn,env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dolphin
-bind=SUPER,b,spawn,flatpak run app.zen_browser.zen/x86_64/stable
-bind=none,Print,spawn,/home/npittas/.local/bin/dms-region-screenshot-edit
-bind=Ctrl,Print,spawn,/home/npittas/.local/bin/dms-full-screenshot-edit
-bind=Shift,Print,spawn,/home/npittas/.local/bin/dms-region-screenshot-copy
+# DMS KDE Workstation screenshot binds
+# Keep baseline binds generic. Personal app launchers belong in user customization.
+bind=none,Print,spawn,%H/.local/bin/dms-region-screenshot-edit
+bind=Ctrl,Print,spawn,%H/.local/bin/dms-full-screenshot-edit
+bind=Shift,Print,spawn,%H/.local/bin/dms-region-screenshot-copy
 
 source=./dms/outputs.conf
 
 # DMS KDE Workstation emergency Mango layout binds
 bind=SUPER,Return,togglemaximizescreen,
 bind=SUPER,f,togglefullscreen,
-bind=SUPER,t,switch_layout,tile
-bind=SUPER,c,switch_layout,scroller
-bind=SUPER,d,switch_layout,dwindle
-bind=SUPER,apostrophe,switch_layout,monocle
 
 # DMS KDE Workstation Mango scroller controls
+# Keep one binding per shortcut. These are Mango-only compositor bindings.
 # Current layout choices through IPC; can be turned into DMS dropdown later.
 bind=SUPER,s,spawn,mmsg -s -l S
 bind=SUPER,apostrophe,spawn,mmsg -s -l M
@@ -331,7 +326,7 @@ axisbind=SUPER,RIGHT,focusdir,right
 # Use Super so normal app scrolling remains untouched.
 mousebind=SUPER,btn_side,focusstack,prev
 mousebind=SUPER,btn_extra,focusstack,next
-bind=SUPER+SHIFT,l,spawn,/home/npittas/.local/bin/mango-workstation-menu
+bind=SUPER+SHIFT,l,spawn,%H/.local/bin/mango-workstation-menu
 
 # DMS KDE Workstation Mango window controls
 bind=SUPER,q,killclient,
@@ -340,7 +335,6 @@ bind=SUPER+SHIFT,m,restore_minimized
 bind=SUPER+SHIFT,Return,togglemaximizescreen,
 bind=SUPER+SHIFT,space,togglefloating,
 bind=SUPER+SHIFT,f,togglefullscreen,
-source = ./dms/binds.conf
 
 # DMS KDE Workstation Mango keyboard layout controls
 # English/Greek layouts are configured with xkb_rules_layout=us,gr.
