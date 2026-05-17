@@ -188,6 +188,60 @@ The app currently covers:
 - backups / restore
 - tools
 
+### Settings app screenshots
+
+#### Overview
+
+![Overview](assets/screenshots/overview.png)
+
+#### Layout & Scroller
+
+![Layout & Scroller](assets/screenshots/layout-scroller.png)
+
+#### Animations & Effects
+
+![Animations & Effects](assets/screenshots/animations-effects.png)
+
+#### Input
+
+![Input](assets/screenshots/input.png)
+
+#### Keyboard
+
+![Keyboard](assets/screenshots/keyboard.png)
+
+#### Keybindings
+
+![Keybindings](assets/screenshots/keybindings.png)
+
+#### Startup
+
+![Startup](assets/screenshots/startup.png)
+
+#### Services
+
+![Services](assets/screenshots/services.png)
+
+#### Portals
+
+![Portals](assets/screenshots/portals.png)
+
+#### Theme Bridge
+
+![Theme Bridge](assets/screenshots/theme-bridge.png)
+
+#### Login
+
+![Login](assets/screenshots/login.png)
+
+#### Backup & Recovery
+
+![Backup & Recovery](assets/screenshots/backup-recovery.png)
+
+#### Tools
+
+![Tools](assets/screenshots/tools.png)
+
 ---
 
 ## Important behavior decisions
