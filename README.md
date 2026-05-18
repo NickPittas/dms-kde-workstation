@@ -89,9 +89,13 @@ Dry-run is the default.
 
 ### 5) Apply the baseline for real
 
+**Do not run this inside Ghostty.** `dnf install` rebuilds the fontconfig cache, which crashes Ghostty (SEGV) and kills your terminal mid-install. Use SSH, Konsole, Kitty, or a TTY (Ctrl+Alt+F3) instead.
+
 ```bash
 scripts/apply-mango-baseline --apply --install-packages
 ```
+
+The script is idempotent — if it gets interrupted, just re-run it. It skips already-installed packages and already-deployed files.
 
 If you previously enabled `dms.service`, disable it before first Mango login so Mango's explicit `dms run` startup line is the only DMS startup path:
 
@@ -474,6 +478,29 @@ Mango per-window opacity works, but Ghostty’s own transparency/blur path is no
 
 This repo uses `grim + slurp + swappy`, and the selection overlay was tuned to reduce blur/fill artifacts under Mango.
 If screenshot output is correct but selection preview looks odd, check the installed region screenshot scripts in `~/.local/bin/`.
+
+### Install crashed / was interrupted / machine in unknown state
+
+The baseline script is idempotent. If it was interrupted (power loss, terminal crash, etc.), just re-run:
+
+```bash
+scripts/apply-mango-baseline --apply --install-packages
+```
+
+It skips already-installed packages and already-deployed files, so it is safe to run multiple times.
+
+### Ghostty crashes during `dnf install`
+
+This is a known Ghostty + fontconfig bug: when `dnf` installs packages that rebuild the fontconfig cache, Ghostty (a GTK4 app) crashes with a SEGV in `FcConfigDestroy`.
+
+**Do not run `dnf install` or the baseline script with `--install-packages` inside Ghostty.**
+
+Use one of these instead:
+- SSH into the machine
+- Konsole, Kitty, or any non-GTK4 terminal
+- A TTY (Ctrl+Alt+F3)
+
+The baseline script now detects Ghostty and refuses to install packages if it is the parent terminal.
 
 ---
 
