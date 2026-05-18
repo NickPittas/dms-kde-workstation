@@ -124,6 +124,46 @@ install_template_file() {
   fi
 }
 
+install_file_if_missing() {
+  local src="$1" target="$2" mode="${3:-0644}"
+  if [ -e "$target" ]; then
+    log "Preserving existing user file: $target"
+    return 0
+  fi
+  install_file "$src" "$target" "$mode"
+}
+
+ensure_line() {
+  local file="$1" line="$2" label="$3"
+  if [ ! -f "$file" ]; then
+    return 1
+  fi
+  if grep -Fqx -- "$line" "$file"; then
+    log "$label already present"
+    return 0
+  fi
+  backup_file "$file"
+  if [ "$APPLY" -eq 1 ]; then
+    printf '\n%s\n' "$line" >> "$file"
+    log "Added missing $label"
+  else
+    log "DRY-RUN: append missing $label to $file"
+  fi
+}
+
+install_or_preserve_mango_config() {
+  local src="$ROOT/configs/mango/config.conf.working-20260516"
+  local target="$HOME/.config/mango/config.conf"
+  if [ ! -f "$target" ]; then
+    install_template_file "$src" "$target" 0644
+    return 0
+  fi
+  log "Preserving existing Mango config: $target"
+  log "No full overwrite will be performed. Window rules, keybinds, and custom layout changes are kept."
+  ensure_line "$target" "exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run" "DMS Mango startup line"
+  ensure_line "$target" "exec-once=$HOME/.local/bin/dms-mango-post-startup" "DMS Mango post-startup helper line"
+}
+
 install_packages() {
   local fedora_packages=(
     qt5ct qt6ct-kde python3-pyside6
@@ -292,8 +332,7 @@ install_polkit_policy() {
 }
 
 apply_files() {
-  install_template_file "$ROOT/configs/mango/config.conf.working-20260516" \
-    "$HOME/.config/mango/config.conf" 0644
+  install_or_preserve_mango_config
 
   install_file "$ROOT/configs/systemd-user/xdg-desktop-portal.service.mango-override-20260516" \
     "$HOME/.config/systemd/user/xdg-desktop-portal.service" 0644
@@ -324,7 +363,7 @@ apply_files() {
   install_file "$ROOT/configs/lib/sddm-consolidate-autologin.py" \
     "$HOME/.local/lib/dms-kde-workstation/sddm-consolidate-autologin.py" 0755
 
-  install_file "$ROOT/configs/dms-kde-workstation/startup.json" \
+  install_file_if_missing "$ROOT/configs/dms-kde-workstation/startup.json" \
     "$HOME/.config/dms-kde-workstation/startup.json" 0644
 
   install_template_file "$ROOT/configs/applications/dms-region-screenshot-edit.desktop" \

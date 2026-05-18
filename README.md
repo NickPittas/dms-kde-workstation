@@ -484,6 +484,12 @@ If screenshot output is correct but selection preview looks odd, check the insta
 The Window Rules page uses `lswt` to list open Wayland windows and get app IDs across monitors.
 The baseline installer builds and installs it automatically when run with `--install-packages`.
 
+If you already customized Mango/DMS and do not want to re-run the full baseline, install only `lswt`:
+
+```bash
+scripts/install-lswt
+```
+
 Manual install:
 
 ```bash

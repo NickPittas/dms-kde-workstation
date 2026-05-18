@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -u
+
+log() { printf '%s\n' "$*"; }
+fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+run() { log "+ $*"; "$@"; }
+
+SRC_DIR="$HOME/.local/src/lswt"
+
+log "DMS KDE Workstation lswt installer"
+log "This installs only lswt. It does not modify Mango config, DMS settings, keybinds, window rules, startup apps, or portal files."
+
+if command -v lswt >/dev/null 2>&1; then
+  log "lswt already installed: $(command -v lswt)"
+  exit 0
+fi
+
+log "Installing build dependencies..."
+if ! run sudo dnf install -y git gcc make wayland-devel wayland-protocols-devel scdoc; then
+  fail "Could not install build dependencies. Try manually:\n  sudo dnf install -y git gcc make wayland-devel wayland-protocols-devel scdoc"
+fi
+
+if ! mkdir -p "$(dirname "$SRC_DIR")"; then
+  fail "Could not create source directory parent. Try manually:\n  mkdir -p '$HOME/.local/src'"
+fi
+
+if [ -d "$SRC_DIR/.git" ]; then
+  log "Updating existing lswt checkout: $SRC_DIR"
+  if ! run git -C "$SRC_DIR" pull --ff-only; then
+    fail "Could not update lswt checkout. Try manually:\n  cd '$SRC_DIR' && git pull --ff-only"
+  fi
+else
+  log "Cloning lswt: $SRC_DIR"
+  if ! run git clone https://git.sr.ht/~leon_plickat/lswt "$SRC_DIR"; then
+    fail "Could not clone lswt. Check network/sourcehut access, then retry:\n  git clone https://git.sr.ht/~leon_plickat/lswt '$SRC_DIR'"
+  fi
+fi
+
+if ! run make -C "$SRC_DIR"; then
+  fail "Could not build lswt. Try manually:\n  make -C '$SRC_DIR'"
+fi
+
+if ! run sudo make -C "$SRC_DIR" install; then
+  fail "Could not install lswt. Try manually:\n  sudo make -C '$SRC_DIR' install"
+fi
+
+if command -v lswt >/dev/null 2>&1; then
+  log "OK: lswt installed: $(command -v lswt)"
+  log "Test with: lswt"
+else
+  fail "lswt installed but is not in PATH. Check /usr/local/bin/lswt or add /usr/local/bin to PATH."
+fi
