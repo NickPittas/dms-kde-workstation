@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -1358,9 +1359,11 @@ class MainWindow(QMainWindow):
         self.window_rule_focus_label.setWordWrap(True)
         inspect.addWidget(self.window_rule_focus_label)
         inspect_row = QHBoxLayout()
-        inspect_row.addWidget(self.action_button("Refresh Focused Window", self.refresh_focused_window_rule_target, False, "Query Mango for the currently focused window title and app ID."))
+        inspect_row.addWidget(self.action_button("Refresh Focused Window", self.refresh_focused_window_rule_target, False, "Query DMS/Mango for the currently focused window title and app ID."))
         inspect_row.addWidget(self.action_button("Capture After 3 Seconds", self.capture_window_rule_target_delayed, True, "Hide this app, switch to the target app, then capture its app ID and title after 3 seconds."))
         inspect_row.addWidget(self.action_button("Use Focused Window Now", self.use_focused_window_for_rule, False, "Copy the currently focused window title and app ID into the editor below immediately."))
+        inspect_row.addWidget(self.action_button("Select Open Window", self.select_open_window_for_rule, True, "Choose from all open Wayland windows reported by lswt."))
+        inspect_row.addWidget(self.action_button("Capture Diagnostics", self.show_window_capture_diagnostics, False, "Show raw DMS/Mango focused-window output for debugging."))
         inspect_row.addStretch(1)
         inspect.addLayout(inspect_row)
 
@@ -2618,8 +2621,69 @@ class MainWindow(QMainWindow):
                 info["title"] = value
         return info
 
+    def lswt_windows(self) -> list[dict[str, str]]:
+        if not shutil.which("lswt"):
+            return []
+        code, out = run_cmd(["lswt"], timeout=8)
+        if code != 0:
+            return []
+        windows: list[dict[str, str]] = []
+        for line in out.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("state:"):
+                continue
+            parts = stripped.split(None, 2)
+            if len(parts) < 2:
+                continue
+            state = parts[0]
+            appid = parts[1]
+            title = parts[2].strip() if len(parts) > 2 else ""
+            if len(title) >= 2 and title[0] == '"' and title[-1] == '"':
+                title = title[1:-1]
+            windows.append({
+                "appid": appid,
+                "title": title,
+                "output": "lswt",
+                "active": "a" in state,
+            })
+        return windows
+
+    def lswt_focused_window_rule_target(self) -> dict[str, str]:
+        for window in self.lswt_windows():
+            if window.get("active"):
+                return window
+        return {"appid": "", "title": "", "output": "lswt", "__error": "lswt found no active window"}
+
+    def dms_focused_window_rule_target(self) -> dict[str, str]:
+        code, out = run_cmd(["dms", "ipc", "call", "window-rules", "getFocusedWindow"], timeout=8)
+        if code != 0 or not out.strip():
+            return {"appid": "", "title": "", "output": "DMS", "__error": out.strip()}
+        text = out.strip()
+        try:
+            data = json.loads(text)
+            return {
+                "appid": str(data.get("appId") or data.get("appid") or ""),
+                "title": str(data.get("title") or ""),
+                "output": "DMS",
+            }
+        except Exception:
+            # Some DMS IPC return paths stringify object fields poorly. Keep raw output for diagnostics.
+            return {"appid": "", "title": "", "output": "DMS", "__error": text}
+
     def focused_window_rule_target(self) -> dict[str, str]:
+        lswt_info = self.lswt_focused_window_rule_target()
+        if lswt_info.get("appid") or lswt_info.get("title"):
+            return lswt_info
+
+        dms_info = self.dms_focused_window_rule_target()
+        if dms_info.get("appid") or dms_info.get("title"):
+            return dms_info
+
         errors: list[str] = []
+        if lswt_info.get("__error"):
+            errors.append(f"lswt: {lswt_info['__error']}")
+        if dms_info.get("__error"):
+            errors.append(f"DMS: {dms_info['__error']}")
         outputs = self.mango_outputs()
         if not outputs:
             outputs = [""]
@@ -2632,7 +2696,25 @@ class MainWindow(QMainWindow):
             info = self.parse_mango_client_info(out, output)
             if info.get("appid") or info.get("title"):
                 return info
+            errors.append(f"{output or 'default'}: empty title/appid")
         return {"appid": "", "title": "", "output": ", ".join(outputs), "__error": "; ".join(errors)}
+
+    def show_window_capture_diagnostics(self) -> None:
+        chunks: list[str] = []
+        for label, cmd in [
+            ("lswt windows", ["lswt"]),
+            ("DMS focused window", ["dms", "ipc", "call", "window-rules", "getFocusedWindow"]),
+            ("Mango outputs", ["mmsg", "-g", "-O"]),
+            ("Mango default focused client", ["mmsg", "-g", "-c"]),
+            ("Mango all output focused client", ["mmsg", "-g", "-O", "-c"]),
+        ]:
+            code, out = run_cmd(cmd, timeout=8)
+            chunks.append(f"== {label} ==\n$ {' '.join(cmd)}\nexit={code}\n{out.strip() or '(empty)'}")
+        for output in self.mango_outputs():
+            for cmd in [["mmsg", "-o", output, "-g", "-c"], ["mmsg", "-g", "-c", "-o", output]]:
+                code, out = run_cmd(cmd, timeout=8)
+                chunks.append(f"== Mango focused client for {output} ==\n$ {' '.join(cmd)}\nexit={code}\n{out.strip() or '(empty)'}")
+        self.say("\n\n".join(chunks))
 
     def parse_window_rule_line(self, line: str) -> dict[str, str]:
         raw = line.strip()
@@ -2701,6 +2783,26 @@ class MainWindow(QMainWindow):
             self.say("FAIL: Could not capture focused window. " + (info.get("__error") or f"Checked outputs: {info.get('output') or 'unknown'}"))
             return
         self.apply_window_rule_target(info)
+
+    def select_open_window_for_rule(self) -> None:
+        windows = self.lswt_windows()
+        if not windows:
+            self.say("FAIL: lswt did not report open windows. Install/test lswt first, then retry.")
+            return
+        labels: list[str] = []
+        by_label: dict[str, dict[str, str]] = {}
+        for window in windows:
+            active = "★ " if window.get("active") else ""
+            appid = window.get("appid") or "unknown-appid"
+            title = window.get("title") or "untitled"
+            label = f"{active}{appid} — {title}"
+            labels.append(label)
+            by_label[label] = window
+        choice, ok = QInputDialog.getItem(self, "Select open window", "Window:", labels, 0, False)
+        if not ok or not choice:
+            self.say("Cancelled open-window selection.")
+            return
+        self.apply_window_rule_target(by_label[choice])
 
     def capture_window_rule_target_delayed(self) -> None:
         if hasattr(self, "window_rule_focus_label"):
