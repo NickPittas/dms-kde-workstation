@@ -2584,22 +2584,55 @@ class MainWindow(QMainWindow):
         self.say(f"Saved keybindings. Backup: {backup}")
         self.reload_mango()
 
-    def focused_window_rule_target(self) -> dict[str, str]:
-        code, out = run_cmd(["mmsg", "-g", "-c"], timeout=8)
-        info = {"appid": "", "title": ""}
+    def mango_outputs(self) -> list[str]:
+        code, out = run_cmd(["mmsg", "-g", "-O"], timeout=8)
         if code != 0:
-            return info
+            return []
+        outputs: list[str] = []
+        for line in out.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("+"):
+                stripped = stripped[1:].strip()
+            name = stripped.split()[0] if stripped.split() else ""
+            if name and name not in outputs:
+                outputs.append(name)
+        return outputs
+
+    def parse_mango_client_info(self, out: str, output: str = "") -> dict[str, str]:
+        info = {"appid": "", "title": "", "output": output}
         for line in out.splitlines():
             parts = line.split(" ", 2)
-            if len(parts) < 3:
+            if len(parts) >= 3:
+                kind = parts[1].strip()
+                value = parts[2].strip()
+            elif len(parts) == 2:
+                kind = parts[0].strip()
+                value = parts[1].strip()
+            else:
                 continue
-            kind = parts[1].strip()
-            value = parts[2].strip()
             if kind == "appid":
                 info["appid"] = value
             elif kind == "title":
                 info["title"] = value
         return info
+
+    def focused_window_rule_target(self) -> dict[str, str]:
+        errors: list[str] = []
+        outputs = self.mango_outputs()
+        if not outputs:
+            outputs = [""]
+        for output in outputs:
+            cmd = ["mmsg", "-o", output, "-g", "-c"] if output else ["mmsg", "-g", "-c"]
+            code, out = run_cmd(cmd, timeout=8)
+            if code != 0:
+                errors.append(f"{output or 'default'}: {out.strip() or 'mmsg failed'}")
+                continue
+            info = self.parse_mango_client_info(out, output)
+            if info.get("appid") or info.get("title"):
+                return info
+        return {"appid": "", "title": "", "output": ", ".join(outputs), "__error": "; ".join(errors)}
 
     def parse_window_rule_line(self, line: str) -> dict[str, str]:
         raw = line.strip()
@@ -2641,11 +2674,15 @@ class MainWindow(QMainWindow):
             return
         info = self.focused_window_rule_target()
         if info.get("appid") or info.get("title"):
+            output = info.get("output") or "unknown"
             self.window_rule_focus_label.setText(
-                f"Focused app ID: {info.get('appid') or 'unknown'}\nFocused title: {info.get('title') or 'unknown'}"
+                f"Focused output: {output}\nFocused app ID: {info.get('appid') or 'unknown'}\nFocused title: {info.get('title') or 'unknown'}"
             )
         else:
-            self.window_rule_focus_label.setText("Could not read focused window from Mango. Focus the target app and try again.")
+            detail = info.get("__error") or f"Checked outputs: {info.get('output') or 'unknown'}"
+            self.window_rule_focus_label.setText(
+                "Could not read focused window from Mango. Focus the target app and try again.\n" + detail
+            )
 
     def apply_window_rule_target(self, info: dict[str, str]) -> None:
         if hasattr(self, "window_rule_appid"):
@@ -2656,12 +2693,12 @@ class MainWindow(QMainWindow):
             self.window_rule_enable_title.setChecked(False)
         self.refresh_focused_window_rule_target()
         self.build_window_rule_line()
-        self.say(f"Captured window: {info.get('appid') or info.get('title')}")
+        self.say(f"Captured window on {info.get('output') or 'unknown output'}: {info.get('appid') or info.get('title')}")
 
     def use_focused_window_for_rule(self) -> None:
         info = self.focused_window_rule_target()
         if not info.get("appid") and not info.get("title"):
-            self.say("FAIL: Could not capture focused window.")
+            self.say("FAIL: Could not capture focused window. " + (info.get("__error") or f"Checked outputs: {info.get('output') or 'unknown'}"))
             return
         self.apply_window_rule_target(info)
 
@@ -2675,7 +2712,7 @@ class MainWindow(QMainWindow):
             self.raise_()
             self.activateWindow()
             if not info.get("appid") and not info.get("title"):
-                self.say("FAIL: Delayed capture could not read the target window.")
+                self.say("FAIL: Delayed capture could not read the target window. " + (info.get("__error") or f"Checked outputs: {info.get('output') or 'unknown'}"))
                 self.refresh_focused_window_rule_target()
                 return
             self.apply_window_rule_target(info)
