@@ -78,7 +78,7 @@ install_file() {
 
 install_packages() {
   local fedora_packages=(
-    qt5ct qt6ct-kde
+    qt5ct qt6ct-kde python3-pyside6
     dolphin kate okular gwenview ark kcalc filelight kwalletmanager5 plasma-discover kde-partitionmanager
     xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk xdg-desktop-portal-kde
     blueman pavucontrol qpwgraph firewall-config system-config-printer gparted flatseal

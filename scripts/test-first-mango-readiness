@@ -27,6 +27,12 @@ else
 fi
 if has dms; then pass "dms installed"; else fail "dms missing"; ready=0; fi
 if has qs || has quickshell; then pass "quickshell available"; else fail "quickshell missing"; ready=0; fi
+if python3 -c 'import PySide6' >/dev/null 2>&1; then
+  pass "PySide6 available for settings app"
+else
+  fail "PySide6 missing; install python3-pyside6"
+  ready=0
+fi
 
 for pkg in xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk xdg-desktop-portal-kde; do
   if rpm -q "$pkg" >/dev/null 2>&1; then

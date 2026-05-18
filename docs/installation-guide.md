@@ -93,7 +93,16 @@ scripts/apply-mango-baseline --install-packages
 
 ### Real apply
 
+Do **not** run package installation inside Ghostty. Use SSH, Konsole, Kitty, or a TTY because Ghostty can crash while `dnf` rebuilds fontconfig caches.
+
 ```bash
+scripts/apply-mango-baseline --apply --install-packages
+```
+
+If `dms-mango-settings` later fails with `No module named 'PySide6'`, install the missing dependency and re-run the baseline:
+
+```bash
+sudo dnf install -y python3-pyside6
 scripts/apply-mango-baseline --apply --install-packages
 ```
 
@@ -105,7 +114,7 @@ scripts/apply-mango-baseline --apply --install-packages --obsidian-override
 
 This will:
 
-- install Mango and approved Fedora packages
+- install Mango and approved Fedora packages, including `python3-pyside6` for the settings app
 - deploy the working Mango baseline
 - make DMS start with explicit `qt6ct` env
 - install the settings app

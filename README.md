@@ -479,6 +479,22 @@ Mango per-window opacity works, but Ghostty’s own transparency/blur path is no
 This repo uses `grim + slurp + swappy`, and the selection overlay was tuned to reduce blur/fill artifacts under Mango.
 If screenshot output is correct but selection preview looks odd, check the installed region screenshot scripts in `~/.local/bin/`.
 
+### `dms-mango-settings` says `No module named 'PySide6'`
+
+Install the settings app dependency:
+
+```bash
+sudo dnf install -y python3-pyside6
+```
+
+Then re-run:
+
+```bash
+scripts/apply-mango-baseline --apply --install-packages
+```
+
+The installer now includes `python3-pyside6`; older checkouts did not.
+
 ### Install crashed / was interrupted / machine in unknown state
 
 The baseline script is idempotent. If it was interrupted (power loss, terminal crash, etc.), just re-run:
