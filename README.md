@@ -479,6 +479,27 @@ Mango per-window opacity works, but Ghostty’s own transparency/blur path is no
 This repo uses `grim + slurp + swappy`, and the selection overlay was tuned to reduce blur/fill artifacts under Mango.
 If screenshot output is correct but selection preview looks odd, check the installed region screenshot scripts in `~/.local/bin/`.
 
+### Window Rules cannot list/select open windows
+
+The Window Rules page uses `lswt` to list open Wayland windows and get app IDs across monitors.
+The baseline installer builds and installs it automatically when run with `--install-packages`.
+
+Manual install:
+
+```bash
+sudo dnf install -y git gcc make wayland-devel wayland-protocols-devel scdoc
+git clone https://git.sr.ht/~leon_plickat/lswt ~/.local/src/lswt
+make -C ~/.local/src/lswt
+sudo make -C ~/.local/src/lswt install
+```
+
+Test:
+
+```bash
+lswt
+lswt --custom 'a,t,A'
+```
+
 ### `dms-mango-settings` says `No module named 'PySide6'`
 
 Install the settings app dependency:

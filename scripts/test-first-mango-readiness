@@ -33,6 +33,11 @@ else
   fail "PySide6 missing; install python3-pyside6"
   ready=0
 fi
+if has lswt; then
+  pass "lswt available for Mango window-rule selection"
+else
+  warn "lswt missing; Window Rules can still be edited manually, but open-window selection will not work until baseline --install-packages installs lswt"
+fi
 
 for pkg in xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk xdg-desktop-portal-kde; do
   if rpm -q "$pkg" >/dev/null 2>&1; then

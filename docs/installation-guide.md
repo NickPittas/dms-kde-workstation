@@ -115,6 +115,7 @@ scripts/apply-mango-baseline --apply --install-packages --obsidian-override
 This will:
 
 - install Mango and approved Fedora packages, including `python3-pyside6` for the settings app
+- build/install `lswt` from source if missing, so Window Rules can list open Wayland windows
 - deploy the working Mango baseline
 - make DMS start with explicit `qt6ct` env
 - install the settings app

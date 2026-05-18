@@ -131,6 +131,7 @@ install_packages() {
     xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk xdg-desktop-portal-kde
     blueman pavucontrol qpwgraph firewall-config system-config-printer gparted flatseal
     fuzzel wl-clipboard grim slurp swappy wf-recorder
+    git gcc make wayland-devel wayland-protocols-devel scdoc
   )
 
   # Terra repo — skip if already configured (idempotent)
@@ -169,6 +170,57 @@ install_packages() {
     log "The baseline files will still be deployed. You can install missing packages later with:"
     log "  sudo dnf install ${failed[*]}"
     log ""
+  fi
+}
+
+install_lswt() {
+  if command -v lswt >/dev/null 2>&1; then
+    log "lswt already installed: $(command -v lswt)"
+    return 0
+  fi
+  log "lswt missing; installing from source for reliable Mango window-rule selection"
+  log "Why: Window Rules needs app IDs for open windows, and Fedora does not package lswt yet."
+  if [ "$APPLY" -eq 0 ]; then
+    log "DRY-RUN: git clone https://git.sr.ht/~leon_plickat/lswt ~/.local/src/lswt"
+    log "DRY-RUN: make -C ~/.local/src/lswt"
+    log "DRY-RUN: sudo make -C ~/.local/src/lswt install"
+    return 0
+  fi
+  local src_dir="$HOME/.local/src/lswt"
+  if ! mkdir -p "$(dirname "$src_dir")"; then
+    log "WARNING: Could not create source directory parent: $(dirname "$src_dir")"
+    log "Fix manually: mkdir -p '$HOME/.local/src'"
+    return 0
+  fi
+  if [ -d "$src_dir/.git" ]; then
+    if ! git -C "$src_dir" pull --ff-only; then
+      log "WARNING: Could not update existing lswt checkout: $src_dir"
+      log "Fix manually: cd '$src_dir' && git pull --ff-only"
+      return 0
+    fi
+  else
+    if ! git clone https://git.sr.ht/~leon_plickat/lswt "$src_dir"; then
+      log "WARNING: Could not clone lswt. Window Rules open-window picker will not work."
+      log "Fix manually: git clone https://git.sr.ht/~leon_plickat/lswt '$src_dir'"
+      return 0
+    fi
+  fi
+  if ! make -C "$src_dir"; then
+    log "WARNING: Could not build lswt. Window Rules open-window picker will not work."
+    log "Install build deps and retry: sudo dnf install -y git gcc make wayland-devel wayland-protocols-devel scdoc"
+    log "Then run: make -C '$src_dir'"
+    return 0
+  fi
+  if ! sudo make -C "$src_dir" install; then
+    log "WARNING: Could not install lswt. Window Rules open-window picker will not work."
+    log "Fix manually: sudo make -C '$src_dir' install"
+    return 0
+  fi
+  if command -v lswt >/dev/null 2>&1; then
+    log "Installed lswt: $(command -v lswt)"
+  else
+    log "WARNING: lswt install finished but command is not in PATH."
+    log "Fix manually: ensure /usr/local/bin is in PATH or run: /usr/local/bin/lswt"
   fi
 }
 
@@ -311,6 +363,45 @@ apply_user_actions() {
   fi
 }
 
+post_install_report() {
+  log ""
+  log "Post-install status:"
+  local missing=()
+  for cmd in mango dms lswt; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+      log "  OK   $cmd -> $(command -v "$cmd")"
+    else
+      log "  WARN $cmd missing"
+      missing+=("$cmd")
+    fi
+  done
+  if ! command -v qs >/dev/null 2>&1 && ! command -v quickshell >/dev/null 2>&1; then
+    log "  WARN quickshell/qs missing"
+    missing+=("quickshell")
+  else
+    log "  OK   quickshell available"
+  fi
+  if ! python3 -c 'import PySide6' >/dev/null 2>&1; then
+    log "  WARN PySide6 missing -> fix: sudo dnf install -y python3-pyside6"
+  else
+    log "  OK   PySide6 available"
+  fi
+  for pkg in xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk xdg-desktop-portal-kde; do
+    if rpm -q "$pkg" >/dev/null 2>&1; then
+      log "  OK   $pkg installed"
+    else
+      log "  WARN $pkg missing -> fix: sudo dnf install -y $pkg"
+    fi
+  done
+  [ -f "$HOME/.config/mango/config.conf" ] && log "  OK   Mango config deployed" || log "  WARN Mango config missing -> rerun this script with --apply"
+  [ -x "$HOME/.local/bin/dms-mango-settings" ] && log "  OK   Settings app installed" || log "  WARN Settings app missing -> rerun this script with --apply"
+  if [ ${#missing[@]} -gt 0 ]; then
+    log ""
+    log "Some optional/required commands are still missing. Use the WARN lines above, then run:"
+    log "  $ROOT/scripts/test-first-mango-readiness"
+  fi
+}
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --apply) APPLY=1 ;;
@@ -340,6 +431,7 @@ ensure_backup_root
 
 if [ "$INSTALL_PACKAGES" -eq 1 ]; then
   install_packages
+  install_lswt
 else
   log "Skipping package installation. Use --install-packages to enable it."
 fi
@@ -349,6 +441,7 @@ log "Deploying configuration files..."
 apply_files
 install_polkit_policy
 apply_user_actions
+post_install_report
 
 cat <<EOF
 
