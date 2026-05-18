@@ -42,6 +42,30 @@ run() {
   fi
 }
 
+ensure_backup_root() {
+  local dir="$HOME/.local/state/dms-kde-workstation/backups"
+  if [ "$APPLY" -eq 0 ]; then
+    return 0
+  fi
+  if ! mkdir -p "$dir" 2>/dev/null; then
+    fail "Cannot create backup directory: $dir
+
+This usually means a previous broken/privileged run created root-owned files under ~/.local/state/dms-kde-workstation.
+Fix ownership from your current working session, then re-run:
+
+  sudo chown -R \"$USER:$USER\" \"$HOME/.local/state/dms-kde-workstation\"
+  chmod -R u+rwX \"$HOME/.local/state/dms-kde-workstation\""
+  fi
+  if [ ! -w "$dir" ]; then
+    fail "Backup directory is not writable: $dir
+
+Fix ownership from your current working session, then re-run:
+
+  sudo chown -R \"$USER:$USER\" \"$HOME/.local/state/dms-kde-workstation\"
+  chmod -R u+rwX \"$HOME/.local/state/dms-kde-workstation\""
+  fi
+}
+
 backup_file() {
   local target="$1"
   [ -e "$target" ] || return 0
@@ -50,7 +74,15 @@ backup_file() {
   backup_dir="$HOME/.local/state/dms-kde-workstation/backups/$stamp"
   backup="$backup_dir${target#$HOME}"
   if [ "$APPLY" -eq 1 ]; then
-    mkdir -p "$(dirname "$backup")"
+    ensure_backup_root
+    if ! mkdir -p "$(dirname "$backup")"; then
+      fail "Cannot create backup path for $target.
+
+Fix ownership from your current working session, then re-run:
+
+  sudo chown -R \"$USER:$USER\" \"$HOME/.local/state/dms-kde-workstation\"
+  chmod -R u+rwX \"$HOME/.local/state/dms-kde-workstation\""
+    fi
     cp -a "$target" "$backup"
     log "Backed up $target -> $backup"
   else
@@ -297,8 +329,14 @@ if [ "$APPLY" -eq 1 ]; then
 else
   log "Mode: DRY-RUN"
 fi
+if [ "$INSTALL_PACKAGES" -eq 1 ]; then
+  log "Package install: ENABLED"
+else
+  log "Package install: disabled"
+fi
 
 check_prerequisites
+ensure_backup_root
 
 if [ "$INSTALL_PACKAGES" -eq 1 ]; then
   install_packages
