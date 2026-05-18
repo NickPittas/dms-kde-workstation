@@ -129,6 +129,31 @@ check_prerequisites() {
   log "  - run this from your current working KDE/niri session"
   log "  - do NOT switch to Mango until this script completes successfully"
 
+  # Ghostty crashes (SEGV in fontconfig) when dnf installs font packages.
+  # This kills the terminal mid-install, leaving the machine in a broken state.
+  local parent_term
+  parent_term="$(ps -o comm= -p $PPID 2>/dev/null || true)"
+  if [ "$parent_term" = "ghostty" ]; then
+    log ""
+    log "ERROR: This script is running inside Ghostty."
+    log "Installing packages via dnf rebuilds the fontconfig cache, which"
+    log "crashes Ghostty (fontconfig SEGV in FcConfigDestroy) and kills"
+    log "your terminal mid-install, leaving the machine in a broken state."
+    log ""
+    log "Switch to a different terminal first, then re-run this script."
+    log "Safe options:"
+    log "  - SSH into this machine and run from there"
+    log "  - Use Konsole, Kitty, or any non-GTK4 terminal"
+    log "  - Open a TTY (Ctrl+Alt+F3) and run from there"
+    if [ "$INSTALL_PACKAGES" -eq 1 ]; then
+      fail "Cannot proceed with --install-packages inside Ghostty. Switch terminals first."
+    else
+      log ""
+      log "WARNING: Continuing without --install-packages. Package install was not requested."
+      log ""
+    fi
+  fi
+
   if ! command -v dms >/dev/null 2>&1; then
     fail "DMS is not installed. Install it first, then re-run this script. Fedora example: sudo dnf copr enable avengemedia/dms && sudo dnf install dms"
   fi
