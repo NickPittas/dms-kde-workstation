@@ -85,9 +85,43 @@ install_packages() {
     fuzzel wl-clipboard grim slurp swappy wf-recorder
   )
 
-  run sudo dnf install -y --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release
-  run sudo dnf install -y mangowm
-  run sudo dnf install -y "${fedora_packages[@]}"
+  # Terra repo — skip if already configured (idempotent)
+  if rpm -q terra-release >/dev/null 2>&1; then
+    log "terra-release already installed, skipping repo setup"
+  else
+    if ! run sudo dnf install -y --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra$releasever' terra-release; then
+      log "WARNING: terra-release install failed. If terra repo is already configured, this is safe to ignore."
+      log "If Mango is not installed, you will need to set up the terra repo manually."
+    fi
+  fi
+
+  # Mango — skip if already installed
+  if command -v mango >/dev/null 2>&1; then
+    log "mangowm already installed: $(mango --version 2>/dev/null || echo 'unknown version')"
+  else
+    if ! run sudo dnf install -y mangowm; then
+      log "WARNING: mangowm install failed. Install it manually before proceeding."
+    fi
+  fi
+
+  # KDE/Qt workstation and helper packages — install individually so one failure doesn't block the rest
+  local failed=()
+  for pkg in "${fedora_packages[@]}"; do
+    if rpm -q "$pkg" >/dev/null 2>&1; then
+      : # already installed, skip
+    else
+      if ! run sudo dnf install -y "$pkg"; then
+        failed+=("$pkg")
+      fi
+    fi
+  done
+  if [ ${#failed[@]} -gt 0 ]; then
+    log ""
+    log "WARNING: Some packages failed to install: ${failed[*]}"
+    log "The baseline files will still be deployed. You can install missing packages later with:"
+    log "  sudo dnf install ${failed[*]}"
+    log ""
+  fi
 }
 
 check_prerequisites() {
@@ -235,6 +269,8 @@ else
   log "Skipping package installation. Use --install-packages to enable it."
 fi
 
+log ""
+log "Deploying configuration files..."
 apply_files
 install_polkit_policy
 apply_user_actions

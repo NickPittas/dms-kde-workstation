@@ -1311,129 +1311,24 @@ class MainWindow(QMainWindow):
     def page_keybindings(self) -> QWidget:
         page, layout = self.make_page(
             "Keybindings",
-            "Create Mango compositor shortcuts with controls instead of raw config lines. This page does not manage DMS shortcuts; use DMS for shell-owned actions.",
+            "DMS has a built-in keybinding editor that reads and writes Mango config directly.",
         )
-        c = self.card(layout, "Existing shortcuts", "Select a shortcut to inspect or remove it. Duplicate keys are flagged.")
-
-        # Search + sort bar
-        search_row = QHBoxLayout()
-        self.keybind_search = QLineEdit()
-        self.keybind_search.setPlaceholderText("🔍  Search shortcuts…")
-        self.keybind_search.setClearButtonEnabled(True)
-        self.keybind_search.textChanged.connect(self._filter_keybinds)
-        search_row.addWidget(self.keybind_search, 1)
-        self.keybind_sort_label = QLabel("Sort:")
-        self.keybind_sort_label.setObjectName("pageSub")
-        search_row.addWidget(self.keybind_sort_label)
-        for label, mode in [("A→Z", "alpha"), ("Modifier", "mod"), ("Action", "action")]:
-            btn = QPushButton(label)
-            btn.setFixedWidth(80)
-            btn.setCheckable(True)
-            btn.setProperty("sort_mode", mode)
-            btn.clicked.connect(lambda checked, m=mode: self._sort_keybinds(m))
-            search_row.addWidget(btn)
-        self.keybind_sort_buttons: list[QPushButton] = []
-        for i in range(search_row.count()):
-            w = search_row.itemAt(i).widget()
-            if isinstance(w, QPushButton):
-                self.keybind_sort_buttons.append(w)
-        c.addLayout(search_row)
-
-        self.keybinds_list = QListWidget()
-        self.keybinds_list.setMinimumHeight(260)
-        self.keybinds_list.itemClicked.connect(self.load_selected_keybinding_into_editor)
-        c.addWidget(self.keybinds_list)
-        self.keybind_duplicate_label = QLabel()
-        self.keybind_duplicate_label.setObjectName("pageSub")
-        self.keybind_duplicate_label.setWordWrap(True)
-        c.addWidget(self.keybind_duplicate_label)
-        # Internal storage for unfiltered/sorted bindings
-        self._keybind_items: list[tuple[str, str]] = []  # [(raw_line, display_text)]
-
-        editor = self.card(layout, "Add shortcut", "Choose modifiers, key, and action. This writes a normal Mango bind/axisbind line behind the scenes.")
-        mod_row = QHBoxLayout()
-        self.key_mod_super = QCheckBox("Super")
-        self.key_mod_ctrl = QCheckBox("Ctrl")
-        self.key_mod_alt = QCheckBox("Alt")
-        self.key_mod_shift = QCheckBox("Shift")
-        self.key_mod_super.setChecked(True)
-        for widget in [self.key_mod_super, self.key_mod_ctrl, self.key_mod_alt, self.key_mod_shift]:
-            mod_row.addWidget(widget)
-        mod_row.addStretch(1)
-        editor.addLayout(mod_row)
-
-        form = QGridLayout()
-        self.keybind_key = QLineEdit()
-        self.keybind_key.setPlaceholderText("q, Return, space, F12, UP, DOWN…")
-        self.keybind_kind = QComboBox()
-        self.keybind_kind.addItem("Mango action", "bind-action")
-        self.keybind_kind.addItem("Run command", "spawn")
-        self.keybind_kind.addItem("Wheel/axis action", "axis")
-        self.keybind_action = QComboBox()
-        for label, action in [
-            ("Close focused window", "killclient"),
-            ("Minimize focused window", "minimized"),
-            ("Restore minimized", "restore_minimized"),
-            ("Toggle maximize", "togglemaximizescreen"),
-            ("Toggle floating", "togglefloating"),
-            ("Toggle fullscreen", "togglefullscreen"),
-            ("Focus next window", "focusstack,next"),
-            ("Focus previous window", "focusstack,prev"),
-            ("Focus left", "focusdir,left"),
-            ("Focus right", "focusdir,right"),
-            ("Focus up", "focusdir,up"),
-            ("Focus down", "focusdir,down"),
-            ("Keyboard layout toggle", "switch_keyboard_layout"),
-            ("Keyboard layout English", "switch_keyboard_layout,0"),
-            ("Keyboard layout Greek", "switch_keyboard_layout,1"),
-            ("Set layout Scroller", "spawn,mmsg -s -l S"),
-            ("Set layout Monocle", "spawn,mmsg -s -l M"),
-            ("Set layout Tile", "spawn,mmsg -s -l T"),
-            ("Set layout Dwindle", "spawn,mmsg -s -l DW"),
-        ]:
-            self.keybind_action.addItem(label, action)
-        self.keybind_command = QLineEdit()
-        self.keybind_command.setPlaceholderText("Command for Run command, or optional action argument")
-        form.addWidget(QLabel("Key"), 0, 0)
-        form.addWidget(self.keybind_key, 0, 1)
-        form.addWidget(QLabel("Type"), 1, 0)
-        form.addWidget(self.keybind_kind, 1, 1)
-        form.addWidget(QLabel("Action"), 2, 0)
-        form.addWidget(self.keybind_action, 2, 1)
-        form.addWidget(QLabel("Command/argument"), 3, 0)
-        form.addWidget(self.keybind_command, 3, 1)
-        editor.addLayout(form)
-        buttons = QHBoxLayout()
-        for text, action, primary in [
-            ("Add shortcut", self.add_keybinding_from_controls, True),
-            ("Clear editor", self.clear_keybinding_editor, False),
-        ]:
-            btn = QPushButton(text)
-            if primary:
-                btn.setObjectName("primary")
-            btn.clicked.connect(action)
-            buttons.addWidget(btn)
-        buttons.addStretch(1)
-        editor.addLayout(buttons)
-        preview = QLabel("Tip: select an existing shortcut above to populate these controls when possible.")
-        preview.setObjectName("pageSub")
-        preview.setWordWrap(True)
-        editor.addWidget(preview)
-
-        advanced = self.card(layout, "Advanced raw binding", "Escape hatch for uncommon Mango actions not exposed above.")
-        self.keybind_line = QLineEdit()
-        self.keybind_line.setPlaceholderText("bind=SUPER,x,spawn,command  or  axisbind=SUPER,UP,focusstack,prev")
-        advanced.addWidget(self.keybind_line)
-        adv_row = QHBoxLayout()
-        adv_btn = QPushButton("Add raw binding")
-        adv_btn.clicked.connect(self.add_keybinding_line)
-        adv_row.addWidget(adv_btn)
-        adv_row.addStretch(1)
-        advanced.addLayout(adv_row)
+        c = self.card(layout, "Managed by DMS", "DMS Settings includes a full keybinding editor with search, categories, compositor actions, DMS actions, and custom commands. It writes directly to your Mango config — no need for a separate editor here.")
+        info = QLabel(
+            "DMS Keybinds supports:\n"
+            "• Compositor actions (close, minimize, focus, layout switch…)\n"
+            "• DMS actions (launcher, clipboard, notifications, control center, lock…)\n"
+            "• Custom commands (spawn any app or script)\n"
+            "• Shell commands\n"
+            "• Search, categories, and per-binding editing"
+        )
+        info.setObjectName("pageSub")
+        info.setWordWrap(True)
+        c.addWidget(info)
+        layout.addStretch(1)
         self.add_page_actions(page, [
-            ("Remove Selected Shortcut", self.remove_selected_keybinding, False, "Remove the currently selected shortcut from Mango config."),
-            ("Open Mango Config", lambda: self.open_text_file(MANGO_CONFIG), False, "Open the raw Mango config in your default editor."),
-            ("Save Keybindings", self.save_keybindings, True, "Back up Mango config and save the current shortcut list."),
+            ("Open DMS Keybinds", lambda: self.detach(["dms", "ipc", "call", "keybinds", "open"]), True, "Open the DMS keybinding editor."),
+            ("Open DMS Settings", lambda: self.detach(["dms", "ipc", "call", "settings", "open"]), False, "Open the full DMS Settings panel."),
         ])
         return page
 
@@ -3330,10 +3225,13 @@ class MainWindow(QMainWindow):
     def available_desktop_apps(self) -> list[tuple[str, Path]]:
         seen: set[str] = set()
         apps: list[tuple[str, Path]] = []
-        for directory in [
+        directories = [
             HOME / ".local/share/applications",
             Path("/usr/share/applications"),
-        ]:
+            Path("/var/lib/flatpak/exports/share/applications"),
+            HOME / ".local/share/flatpak/exports/share/applications",
+        ]
+        for directory in directories:
             if not directory.exists():
                 continue
             for path in sorted(directory.glob("*.desktop")):

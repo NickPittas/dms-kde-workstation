@@ -130,6 +130,7 @@ pgrep -x xembedsniproxy >/dev/null && ok "xembedsniproxy running" || warn "xembe
 pgrep -af 'gnome-keyring|kwallet|ksecretd' >/dev/null && ok "keyring/wallet appears running" || warn "keyring/wallet not detected"
 
 section "Configured tray-ready services"
+configured_services=""
 if [ -f "$HOME/.config/dms-kde-workstation/startup.json" ]; then
   configured_services="$(python3 -c 'import json, pathlib; p=pathlib.Path.home()/".config/dms-kde-workstation/startup.json"; data=json.loads(p.read_text()); [print(x) for x in data.get("tray_ready_services", []) if isinstance(x, str)]' 2>/dev/null || true)"
   if [ -n "$configured_services" ]; then
