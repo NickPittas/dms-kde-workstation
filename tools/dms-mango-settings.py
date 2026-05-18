@@ -2965,7 +2965,11 @@ class MainWindow(QMainWindow):
         if not path.exists():
             return None
         stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-        target = BACKUP_ROOT / stamp / str(path).replace(str(HOME) + "/", "", 1)
+        try:
+            rel = path.resolve().relative_to(HOME.resolve())
+        except ValueError:
+            rel = Path(path.name)
+        target = BACKUP_ROOT / stamp / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
         return target

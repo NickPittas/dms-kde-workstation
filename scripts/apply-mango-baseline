@@ -67,12 +67,28 @@ install_file() {
   backup_file "$target"
   if [ "$APPLY" -eq 1 ]; then
     mkdir -p "$(dirname "$target")"
-    # Expand %H placeholder to the installing user's $HOME
-    sed "s|%H|$HOME|g" "$src" | tee "$target" >/dev/null
+    tee "$target" >/dev/null < "$src"
     chmod "$mode" "$target"
     log "Installed $target"
   else
     log "DRY-RUN: install $src -> $target mode $mode"
+  fi
+}
+
+install_template_file() {
+  local src="$1" target="$2" mode="${3:-0644}"
+  if [ ! -f "$src" ]; then
+    log "ERROR: source missing: $src" >&2
+    exit 1
+  fi
+  backup_file "$target"
+  if [ "$APPLY" -eq 1 ]; then
+    mkdir -p "$(dirname "$target")"
+    sed "s|%H|$HOME|g" "$src" | tee "$target" >/dev/null
+    chmod "$mode" "$target"
+    log "Installed $target"
+  else
+    log "DRY-RUN: install template $src -> $target mode $mode"
   fi
 }
 
@@ -174,19 +190,15 @@ install_polkit_policy() {
     log "WARNING: polkit policy source missing: $src"
     return 0
   fi
-  if [ -f "$target" ] && diff -q "$src" "$target" >/dev/null 2>&1; then
-    log "Polkit policy already up to date: $target"
-    return 0
-  fi
   if [ "$APPLY" -eq 1 ]; then
-    if pkexec tee "$target" >/dev/null < "$src" 2>&1; then
+    if sed "s|%H|$HOME|g" "$src" | pkexec tee "$target" >/dev/null 2>&1; then
       pkexec chmod 644 "$target"
       log "Installed polkit policy: $target"
     else
       log ""
       log "WARNING: Could not install polkit policy automatically."
       log "Run this command manually to enable autologin via the GUI:"
-      log "  sudo cp $src $target"
+      log "  sed 's|%H|$HOME|g' $src | sudo tee $target >/dev/null"
       log "  sudo chmod 644 $target"
       log ""
     fi
@@ -196,7 +208,7 @@ install_polkit_policy() {
 }
 
 apply_files() {
-  install_file "$ROOT/configs/mango/config.conf.working-20260516" \
+  install_template_file "$ROOT/configs/mango/config.conf.working-20260516" \
     "$HOME/.config/mango/config.conf" 0644
 
   install_file "$ROOT/configs/systemd-user/xdg-desktop-portal.service.mango-override-20260516" \
@@ -231,15 +243,15 @@ apply_files() {
   install_file "$ROOT/configs/dms-kde-workstation/startup.json" \
     "$HOME/.config/dms-kde-workstation/startup.json" 0644
 
-  install_file "$ROOT/configs/applications/dms-region-screenshot-edit.desktop" \
+  install_template_file "$ROOT/configs/applications/dms-region-screenshot-edit.desktop" \
     "$HOME/.local/share/applications/dms-region-screenshot-edit.desktop" 0644
-  install_file "$ROOT/configs/applications/dms-full-screenshot-edit.desktop" \
+  install_template_file "$ROOT/configs/applications/dms-full-screenshot-edit.desktop" \
     "$HOME/.local/share/applications/dms-full-screenshot-edit.desktop" 0644
-  install_file "$ROOT/configs/applications/dms-region-screenshot-copy.desktop" \
+  install_template_file "$ROOT/configs/applications/dms-region-screenshot-copy.desktop" \
     "$HOME/.local/share/applications/dms-region-screenshot-copy.desktop" 0644
-  install_file "$ROOT/configs/applications/dms-mango-settings.desktop" \
+  install_template_file "$ROOT/configs/applications/dms-mango-settings.desktop" \
     "$HOME/.local/share/applications/dms-mango-settings.desktop" 0644
-  install_file "$ROOT/configs/applications/dms-mango-settings.desktop" \
+  install_template_file "$ROOT/configs/applications/dms-mango-settings.desktop" \
     "$HOME/.config/autostart/dms-mango-settings.desktop" 0644
 }
 
