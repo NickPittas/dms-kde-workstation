@@ -1,6 +1,6 @@
 # DMS + Mango/Niri on Fedora: A Real-World Report From Someone Who Let an LLM Fix His Desktop for 3 Weeks
 
-**TL;DR:** I wanted a KDE-integrated Wayland workstation with a nice shell, working drag-and-drop for creative apps, and a GUI settings surface. I ended up building a whole companion app, 20+ installer iterations, and learning more about `xdg-desktop-portal` than I ever wanted to. Here's the honest report.
+**TL;DR:** I came from KDE/GNOME/Windows expecting to "install a desktop" and ended up learning what a compositor actually is. I built a companion app, iterated an installer 20+ times, and documented every gap between "it compiled" and "I can actually work." Here's my honest journal.
 
 **Repo:** https://github.com/NickPittas/dms-kde-workstation
 
@@ -115,95 +115,153 @@ DMS exports matugen themes for GTK3/4 and Qt5/6, but Qt apps need `qt5ct`/`qt6ct
 
 ---
 
-## What The Official Docs Don't Tell You (Or: What Would Have Happened Without Help)
+## What I Wish I Knew Before I Started: A Journal of Discovery
 
-This is the part I wish existed when I started. Here's what happens if you follow the "standard" install path for each component.
+This section is for anyone coming from Windows, Ubuntu, Pop!_OS, or Fedora KDE/GNOME — full desktop environments where "install the DE" means you get a panel, app launcher, file manager, settings app, and screenshot tool all at once.
 
-### Following Mango's official install instructions
+**Here's what I didn't understand:** Niri, Mango, and Hyprland are **compositors** (window managers). They manage windows. That's it. They don't ship with app launchers, file chooser portals, tray managers, or screenshot tools. KDE and GNOME do — because they're **desktop environments**, not just window managers.
 
-Mango's docs say: install COPR, install `mangowm`, reboot, copy the default config to `~/.config/mango/config.conf`.
+This isn't a failing of the compositor developers. It's a mismatch between my expectations ("I installed a desktop, where's the rest of it?") and what I actually installed ("I installed a window manager, I need to build the rest myself").
 
-**What actually happens:** You log in and see a **gray screen with a mouse cursor. Nothing else.** No bar, no launcher, no terminal keybind, no way to open any app. You're stuck. The default config assumes you have `rofi`, `ghostty`, `waybar`, and a dozen other tools already installed and configured. If you don't, you have no way to launch anything.
+Here are the specific discoveries that cost me the most time.
 
-**Recovery:** Drop to a TTY (Ctrl+Alt+F3), log in, and edit the config from the terminal. But you need to know which apps you actually have installed, which key codes Mango accepts, and how to reload the config without logging out.
+### Discovery 1: "Install the compositor" ≠ "you have a desktop"
 
-### Installing DMS separately
+**My expectation:** Install Mango, log in, and have a working desktop like KDE.
 
-DMS docs say: `sudo dnf copr enable avengemedia/dms && sudo dnf install dms`. Done.
+**What happened:** Gray screen. Mouse cursor. Nothing else. No bar. No launcher. No terminal keybind. No way to open anything.
 
-**What actually happens:** DMS is installed but **never starts under Mango.** DMS has a systemd user service (`dms.service`) that works under KDE/Plasma, but under Mango you need an explicit `exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run` in your Mango config. Without that line, you get the gray screen forever.
+**What I learned:** The "default config" that Mango docs mention assumes you already installed `rofi`, `ghostty`, `waybar`, and configured keybinds for all of them. I had none of those. I was staring at a gray screen with no escape hatch.
 
-**Worse:** If you enable `dms.service` AND add the `exec-once` line, DMS starts twice and breaks. There's no error message — the shell just acts weird.
+**The fix:** Drop to a TTY (Ctrl+Alt+F3), log in with your username/password, and edit `~/.config/mango/config.conf` from the terminal. You need at least one `bind=` line that launches a terminal you actually have installed. Without that, you can't fix anything from inside the session.
 
-### The reboot trap
+**What would have helped:** A note in the install docs saying "before you log in, make sure you have at least one terminal installed and one keybind configured to launch it."
 
-Mango docs say "reboot if you have issues."
+### Discovery 2: DMS doesn't start itself
 
-**What actually happens:** If your config is broken, rebooting just puts you back in the same broken state. If SDDM autologin is set to Mango and Mango is broken, you **can't get back to a working desktop without editing config files from a TTY.** There is no "safe mode" or fallback.
+**My expectation:** `sudo dnf install dms` means DMS will start when I log in.
 
-### File choosers silently fail
+**What happened:** I installed DMS, logged into Mango, and... still gray. DMS never appeared. I thought it was broken.
 
-You install Blender or a Flatpak app. You try to open a file. The file chooser either:
-- Doesn't appear at all
-- Appears but can't see your home directory
-- Crashes the app
+**What I learned:** DMS has a systemd user service (`dms.service`) that auto-starts under KDE/Plasma because Plasma provides `graphical-session.target`. Mango doesn't. You need to explicitly tell Mango to start DMS via an `exec-once=` line in the Mango config.
 
-**Why:** Fedora's `xdg-desktop-portal.service` depends on `graphical-session.target`, which doesn't exist in Mango sessions. You need a systemd user override to remove that dependency. This is **not mentioned** in Mango docs, DMS docs, or Fedora docs. You just think your app is broken.
+**The fix:** Add this to `~/.config/mango/config.conf`:
+```
+exec-once=env QT_QPA_PLATFORMTHEME=qt6ct QT_QPA_PLATFORMTHEME_QT6=qt6ct dms run
+```
 
-### Drag-and-drop under niri
+**The trap I fell into:** I enabled `dms.service` AND added the `exec-once` line. DMS started twice. Some parts worked, some didn't. There was no error message saying "DMS is running twice." It just acted weird.
 
-You install niri because it has great DMS integration. You install Blender. You try to drag a texture from Dolphin into Blender.
+**What would have helped:** A single sentence: "Under non-Plasma compositors, disable `dms.service` and use `exec-once` in your compositor config instead."
 
-**What happens:** Nothing. The drag cursor shows a 🚫. No error message, no log, no indication why.
+### Discovery 3: "Reboot if you have issues" is dangerous advice
 
-**Why:** niri's DnD implementation doesn't support the specific protocol Blender/Nuke use. This is a compositor limitation, not an app bug. You only discover this after hours of searching. (Mango fixed this — that's why I switched.)
+**My expectation:** If something's broken, reboot and it'll fix itself.
 
-### Keyboard layout switching
+**What happened:** I set SDDM autologin to Mango. Mango config was broken. Reboot → still broken. Reboot again → still broken. I was locked out of my desktop.
 
-You have US + Greek layouts. Under KDE, Alt+Shift just works. Under Mango:
+**What I learned:** There is no "safe mode" for Mango. If your config is broken and autologin is enabled, every reboot puts you back in the same broken session. Your only escape is a TTY.
 
-**What happens:** Alt+Shift does nothing. Or it only switches in some apps. Or it switches but the indicator doesn't show the change.
+**The fix:** Before enabling autologin, test the session manually first. Log in via SDDM without autologin, so you can always switch back to KDE if Mango breaks.
 
-**Why:** Mango needs explicit `switch_keyboard_layout` binds in its config, plus `xkeyboard-config` layout definitions. KDE's settings don't propagate to the compositor. You have to hand-edit `bind=` lines.
+### Discovery 4: File choosers are invisible failures
 
-### Qt apps look like garbage
+**My expectation:** Install Blender, open file dialog, pick a file.
 
-You open Dolphin, Okular, or any KDE app. It looks like this:
-- White background with black text
-- Checkerboard pattern in some widgets
-- Wrong font, wrong colors, no icons
+**What happened:** Nothing. No dialog. No error. Blender just... didn't open the file. I thought Blender was broken.
 
-**Why:** Outside Plasma, Qt apps don't know which theme engine to use. You need `qt5ct` and `qt6ct-kde` installed, plus `QT_QPA_PLATFORMTHEME=qt6ct` in your environment. DMS can export the theme, but only if those packages exist *before* the export. There's no error message — apps just look wrong.
+**What I learned:** File choosers on Wayland go through `xdg-desktop-portal`. Fedora's portal service depends on `graphical-session.target`, which doesn't exist in Mango sessions. The portal is technically running but blocked waiting for a target that never arrives.
 
-### Tray icons
+**The fix:** Create a systemd user override that removes the `graphical-session.target` dependency:
+```
+mkdir -p ~/.config/systemd/user
+systemctl --user edit xdg-desktop-portal.service
+# add: [Unit] After=default.target
+```
 
-You install Dropbox, Sunshine, or any app with a tray icon. It starts. You see nothing in the DMS tray.
+**What would have helped:** A note saying "if file choosers don't appear, check portal service dependencies."
 
-**Why:** Multiple reasons, all invisible:
-1. The app started before the session environment was fully propagated
-2. `xembedsniproxy` isn't running (needed for XEmbed tray icons)
-3. The app registered a StatusNotifier item but DMS's `StatusNotifierWatcher` wasn't ready yet
-4. The app just doesn't support StatusNotifier at all
+### Discovery 5: niri's drag-and-drop doesn't work with Blender/Nuke
 
-You don't get "tray icon failed to register." You get **silence.**
+**My expectation:** Drag a texture from Dolphin into Blender. It works on every other desktop.
 
-### Window Rules under Mango
+**What happened:** The drag cursor shows 🚫. Nothing drops. No error, no log, no diagnostic.
 
-You want Ghostty to be transparent or Pavucontrol to float. DMS has a Window Rules tab... which is **hidden** under Mango because DMS only enables it for niri/Hyprland.
+**What I learned:** Different compositors implement DnD protocols differently. Niri's implementation doesn't support the specific protocol that Blender and Nuke use for drag-and-drop. This isn't a bug — it's just how that compositor works. But there's no way to discover this except by trying it.
 
-**Your option:** Edit `windowrule=` lines in `~/.config/mango/config.conf` by hand. The syntax is `windowrule=property:value,appid:com.example.app`. Get one comma wrong and the rule is silently ignored. There's no validation, no feedback, no GUI.
+**The fix:** Switch to Mango, where DnD works with these apps. (This was my main reason for switching.)
 
-### Startup apps
+### Discovery 6: Keyboard layouts don't migrate from KDE
 
-You put `.desktop` files in `~/.config/autostart/`. You log into Mango. They don't start.
+**My expectation:** I set US + Greek in KDE settings with Alt+Shift toggle. It'll work in Mango too.
 
-**Why:** systemd generates `app-foo@autostart.service` units for those, but they depend on `graphical-session.target`, which Mango doesn't provide. Your apps are technically "started" but blocked waiting for a target that never arrives. You need an explicit post-startup helper that waits for DMS to be ready, then launches them.
+**What happened:** Alt+Shift did nothing.
 
-### Screenshots
+**What I learned:** Compositor-level keyboard layouts are separate from DE-level keyboard settings. Mango doesn't read KDE's settings. You need explicit `bind=` lines in Mango's config.
 
-You press Print Screen. Nothing happens. Or Spectacle opens and immediately crashes because it "needs Plasma."
+**The fix:** Add to Mango config:
+```
+bind=ALT,Shift_L,spawn,switch_keyboard_layout
+```
 
-**Why:** Spectacle is a Plasma app. Under a non-Plasma session, you need `grim` (capture), `slurp` (region select), and `swappy` (editor). Each has its own flags, and `slurp`'s selection overlay looks weird under Mango unless you tune the opacity. You have to build the whole toolchain yourself.
+### Discovery 7: Qt apps need a "theme bridge"
+
+**My expectation:** Open Dolphin. It looks like Dolphin.
+
+**What happened:** White background, black text, checkerboard patterns, missing icons. It looked like a broken Windows 95 app.
+
+**What I learned:** Outside Plasma, Qt apps don't know which theme engine to use. You need `qt5ct`/`qt6ct-kde` installed, plus `QT_QPA_PLATFORMTHEME=qt6ct` set in your environment. DMS can export the theme to qtct, but only if those packages are installed *before* the export.
+
+**The fix:**
+1. Install `qt5ct qt6ct-kde`
+2. Set `QT_QPA_PLATFORMTHEME=qt6ct` in `~/.config/environment.d/`
+3. Export DMS Theme/Colors once
+
+**What would have helped:** "Before exporting themes, install qt5ct and qt6ct-kde or Qt apps will look unstyled."
+
+### Discovery 8: Tray icons fail silently
+
+**My expectation:** Install Dropbox. See a tray icon.
+
+**What happened:** Dropbox started. No tray icon. No error.
+
+**What I learned:** Tray icons on Wayland are a multi-layer protocol stack. The app needs to register a StatusNotifier item. The shell needs a StatusNotifierWatcher. For XEmbed tray icons, you need `xembedsniproxy`. The app might start before the environment is ready. Any of these failing means no icon — with no error message.
+
+**The fix:** A post-startup helper that waits for DMS tray to be ready, then restarts tray-sensitive services.
+
+### Discovery 9: Window Rules have no GUI under Mango
+
+**My expectation:** DMS Settings has a Window Rules tab. I can click and configure rules.
+
+**What happened:** The tab exists in DMS Settings, but it's **hidden** under Mango because DMS only enables it for niri/Hyprland.
+
+**What I learned:** DMS's native Window Rules UI is compositor-gated. Mango isn't in the list.
+
+**The fix:** Edit `windowrule=` lines in `~/.config/mango/config.conf` by hand, or use a companion app.
+
+### Discovery 10: Autostart `.desktop` files don't start
+
+**My expectation:** Put `.desktop` files in `~/.config/autostart/`. They start on login.
+
+**What happened:** systemd generated the services, but they depend on `graphical-session.target`, which Mango doesn't provide. The services are "started" but blocked.
+
+**What I learned:** Compositors don't automatically provide the systemd targets that KDE/GNOME do.
+
+**The fix:** A post-startup helper that explicitly launches apps after the UI is ready.
+
+### Discovery 11: Screenshots need a whole toolchain
+
+**My expectation:** Press Print Screen. Get a screenshot.
+
+**What happened:** Nothing. Spectacle opened and crashed because it "needs Plasma."
+
+**What I learned:** Under a non-Plasma session, you need to assemble your own screenshot pipeline: `grim` for capture, `slurp` for region selection, `swappy` for editing. Each has its own flags.
+
+**The fix:** Install `grim slurp swappy`, write wrapper scripts, bind them to Print Screen in Mango config.
+
+---
+
+## What I Learned
 
 ---
 
@@ -231,14 +289,16 @@ You press Print Screen. Nothing happens. Or Spectacle opens and immediately cras
 - Occasionally dropping to a TTY to fix a broken session
 - Contributing issues back to DMS/Mango upstream
 
-**Then yes.** Clone the repo, run the readiness check, and follow the First Run Setup.
+**Then yes.** Clone the repo, run the readiness check, and follow the First Run Setup. It's a journey, but it's a rewarding one.
 
 **If you want:**
 - Something that works out of the box with zero config
-- Guaranteed tray icons for every app
-- Native Mango support in DMS Settings
+- A "Next Next Finish" installer experience
+- Someone else to handle tray icons, portals, and startup apps for you
 
-**Then wait.** Both DMS and Mango are actively improving, but the integration between them still has rough edges that require workarounds.
+**Then use KDE or GNOME.** That's what they're for. Compositors like Mango and niri are building blocks, not finished products. They're for people who want to assemble their own desktop — and who don't mind learning how the pieces fit together.
+
+That said, both DMS and Mango are actively improving, and the gap between "compositor" and "usable desktop" is getting smaller every release.
 
 ---
 
@@ -256,4 +316,4 @@ It includes:
 
 ---
 
-*Built with a lot of patience, `git commit`, and an LLM that couldn't log into Mango but tried really hard anyway.*
+*Built with a lot of patience, some broken sessions, and an LLM that couldn't see the screen but helped me document everything I learned along the way.*
